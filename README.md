@@ -23,9 +23,9 @@ Open `includes/db.php` and update the connection details:
 
 ```php
 // Online DB (optional)
-$onlineDSN  = "mysql:host=sql12.freesqldatabase.com;port=3306;dbname=sql12817970;charset=utf8";
-$onlineUser = "sql12817970";
-$onlinePass = "N9dIfCwPRj";
+$onlineDSN  = "mysql:host=<host>;port=3306;dbname=<dbname>;charset=utf8";
+$onlineUser = "<username>";
+$onlinePass = "<password>";
 
 // Local DB (fallback)
 $localDSN  = "mysql:host=localhost;dbname=talaklasedb;charset=utf8";
