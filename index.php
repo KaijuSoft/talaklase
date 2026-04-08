@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once 'includes/db.php';
+include 'includes/update_banner.php';
 
 $page = $_GET['page'] ?? 'students';
 $allowed = ['students','attendance','view_attendance','print_attendance','grades','score_settings','courses','departments','instructors','sections','subjects','sync'];
