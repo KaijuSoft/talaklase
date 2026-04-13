@@ -83,3 +83,5 @@ Visit: `http://localhost/talaklase/`
 - The database schema is unchanged from the original VB.NET app
 - The online/local DB fallback mirrors the original VB.NET sync logic
 - The print attendance page uses browser print (`Ctrl+P`) — sidebar and filters are hidden automatically
+
+- [![Netlify Status](https://api.netlify.com/api/v1/badges/71aa2d30-6a4b-4117-9714-789173210ae8/deploy-status)](https://app.netlify.com/projects/talaklase/deploys)
