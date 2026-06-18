@@ -1,0 +1,17 @@
+includes/db.php
+node_modules/
+
+*.log
+*.tmp
+
+.env
+.env.local
+
+.idea/
+.vscode/
+
+Thumbs.db
+.DS_Store
+
+uploads/*
+!uploads/.gitkeep

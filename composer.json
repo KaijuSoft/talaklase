@@ -1,0 +1,6 @@
+{
+    "name": "juliusvendivil/talaklase_with_instructor",
+    "require": {
+        "phpoffice/phpspreadsheet": "^2.1"
+    }
+}
