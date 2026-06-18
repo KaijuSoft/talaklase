@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once 'includes/db.php';
-<<<<<<< HEAD
+
 require_once 'includes/auth.php';
 
 authBootstrap();
