@@ -1,7 +1,10 @@
 <?php
 require_once __DIR__ . '/../includes/db.php';
+<<<<<<< HEAD
 require_once __DIR__ . '/../includes/auth.php';
 require_permission('view_attendance');
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 $pdo = getConnection();
 
 $sections = $pdo->query("SELECT section.sectionID, section.section, course.course_acronym FROM section INNER JOIN course ON course.course_id=section.course_id ORDER BY section.section")->fetchAll();

@@ -1,9 +1,15 @@
 <?php
+<<<<<<< HEAD
 // sync_api.php - dedicated endpoint for sync AJAX and SSE calls
 // Called by sync.php via fetch('sync_api.php', ...)
 error_reporting(E_ALL & ~E_DEPRECATED);
 require_once __DIR__ . '/includes/auth.php';
 require_permission('sync_settings');
+=======
+// sync_api.php — dedicated endpoint for sync AJAX and SSE calls
+// Called by sync.php via fetch('sync_api.php', ...)
+error_reporting(E_ALL & ~E_DEPRECATED);
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 
 define('ONLINE_DSN',  "mysql:host=sql12.freesqldatabase.com;port=3306;dbname=sql12817970;charset=utf8mb4");
 define('ONLINE_USER', "sql12817970");

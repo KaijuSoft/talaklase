@@ -1,4 +1,5 @@
 <?php
+<<<<<<< HEAD
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -356,3 +357,18 @@ function deleteRecord(id, name) {
   });
 }
 </script>
+=======
+$config = [
+  'title'     => 'Sections',
+  'icon'      => 'bi-grid-fill',
+  'table'     => 'section',
+  'pk'        => 'sectionID',
+  'fields'    => [
+    ['name'=>'section',   'label'=>'Section Name', 'type'=>'text', 'required'=>true],
+    ['name'=>'course_id', 'label'=>'Course',       'fk'=>['table'=>'course','id'=>'course_id','label'=>'course_acronym']],
+  ],
+  'list_cols' => ['section'=>'Section Name'],
+  'order'     => 'section',
+];
+include __DIR__ . '/../includes/crud_page.php';
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104

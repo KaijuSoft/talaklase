@@ -38,6 +38,7 @@ The app uses your **existing TalaKlase MySQL database** — the same one used by
 ### 3. Open in browser
 Visit: `http://localhost/talaklase/`
 
+<<<<<<< HEAD
 ### 4. Login
 The app now uses role-based access control. On first run, it creates a `users` table and seeds one admin account:
 
@@ -48,6 +49,8 @@ Password: admin123
 
 Change this password in the database before real use. Supported roles are `admin`, `instructor`, and `viewer`.
 
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 ---
 
 ## Pages & Features

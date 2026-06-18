@@ -1,7 +1,10 @@
+<<<<<<< HEAD
 <?php
 require_once __DIR__ . '/includes/auth.php';
 require_permission('print_reports');
 ?>
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 <!DOCTYPE html>
 <html lang="en">
 <head>

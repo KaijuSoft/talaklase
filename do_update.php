@@ -1,8 +1,11 @@
 <?php
 // do_update.php
 // Runs git pull safely and logs the result
+<<<<<<< HEAD
 require_once __DIR__ . '/includes/auth.php';
 require_permission('manage_updates');
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 
 header('Content-Type: application/json');
 
@@ -160,4 +163,8 @@ respond([
     'hash_after' => hasGitError($hash_after) ? $hash_after : substr($hash_after, 0, 7),
     'output' => $pull_output,
     'timestamp' => $timestamp
+<<<<<<< HEAD
 ]);
+=======
+]);
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104

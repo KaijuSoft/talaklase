@@ -1,8 +1,11 @@
 <?php
 // update_check.php
 // Returns JSON: { status, message, branch, local_hash, remote_hash }
+<<<<<<< HEAD
 require_once __DIR__ . '/includes/auth.php';
 require_permission('manage_updates');
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 
 header('Content-Type: application/json');
 
@@ -105,4 +108,8 @@ respond([
     'remote_hash' => substr($remote, 0, 7),
     'dirty' => $has_local_changes,
     'dirty_message' => $has_local_changes ? 'Local file changes detected.' : 'Working tree is clean.'
+<<<<<<< HEAD
 ]);
+=======
+]);
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104

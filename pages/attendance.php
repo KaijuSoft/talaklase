@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/db.php';
+<<<<<<< HEAD
 require_once __DIR__ . '/../includes/auth.php';
 require_permission('edit_attendance');
 $pdo = getConnection();
@@ -33,21 +34,33 @@ function attendanceSectionScope(array $ownedSectionIds, bool $isInstructorScoped
 
 $sectionScope = attendanceSectionScope($ownedSectionIds, $isInstructorScoped);
 
+=======
+$pdo = getConnection();
+
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     $action = $_POST['action'] ?? '';
 
     // ── Load all students (default on load, matches Student_Section() query) ──
     if ($action === 'load_all') {
+<<<<<<< HEAD
       $stmt = $pdo->prepare("SELECT s.st_id AS ID, ss.sectionID AS SecID,
+=======
+        $stmt = $pdo->query("SELECT s.st_id AS ID, ss.sectionID AS SecID,
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
             CONCAT(s.st_lastname,', ',s.st_name,' ',s.st_middlename) AS FullName,
             sec.section
             FROM student s
             INNER JOIN student_section ss ON ss.st_id=s.st_id
             INNER JOIN section sec ON sec.sectionID=ss.sectionID
+<<<<<<< HEAD
         WHERE 1=1{$sectionScope['sql']}
         ORDER BY sec.section, s.st_lastname");
       $stmt->execute($sectionScope['params']);
+=======
+            ORDER BY sec.section, s.st_lastname");
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
         echo json_encode($stmt->fetchAll());
         exit;
     }
@@ -61,10 +74,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             FROM student s
             INNER JOIN student_section ss ON s.st_id=ss.st_id
             INNER JOIN section sec ON ss.sectionID=sec.sectionID
+<<<<<<< HEAD
           WHERE (:empty='' OR sec.section LIKE :prefix)
           {$sectionScope['sql']}
             ORDER BY sec.section, s.st_lastname");
         $stmt->execute(array_merge([':empty'=>$q, ':prefix'=>$q.'%'], $sectionScope['params']));
+=======
+            WHERE :empty='' OR sec.section LIKE :prefix
+            ORDER BY sec.section, s.st_lastname");
+        $stmt->execute([':empty'=>$q, ':prefix'=>$q.'%']);
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
         echo json_encode($stmt->fetchAll());
         exit;
     }
@@ -78,10 +97,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             FROM student s
             INNER JOIN student_section ss ON s.st_id=ss.st_id
             INNER JOIN section sec ON ss.sectionID=sec.sectionID
+<<<<<<< HEAD
           WHERE (:empty='' OR s.st_name LIKE :pat OR s.st_lastname LIKE :pat2)
           {$sectionScope['sql']}
             ORDER BY s.st_lastname");
         $stmt->execute(array_merge([':empty'=>$q, ':pat'=>"%$q%", ':pat2'=>"%$q%"], $sectionScope['params']));
+=======
+            WHERE :empty='' OR s.st_name LIKE :pat OR s.st_lastname LIKE :pat2
+            ORDER BY s.st_lastname");
+        $stmt->execute([':empty'=>$q, ':pat'=>"%$q%", ':pat2'=>"%$q%"]);
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
         echo json_encode($stmt->fetchAll());
         exit;
     }
@@ -120,10 +145,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             INNER JOIN student_section ss ON s.st_id=ss.st_id
             INNER JOIN section sec ON sec.sectionID=ss.sectionID
             LEFT JOIN attendance a ON a.st_id=s.st_id AND a.sectionID=ss.sectionID AND a._date=:date AND a.term=:term
+<<<<<<< HEAD
           WHERE (sec.section LIKE :pat OR s.st_lastname LIKE :pat2)
           {$sectionScope['sql']}
             ORDER BY sec.section, s.st_lastname");
         $stmt->execute(array_merge([':pat'=>$q.'%', ':pat2'=>"%$q%", ':date'=>$date, ':term'=>$term], $sectionScope['params']));
+=======
+            WHERE sec.section LIKE :pat OR s.st_lastname LIKE :pat2
+            ORDER BY sec.section, s.st_lastname");
+        $stmt->execute([':pat'=>$q.'%', ':pat2'=>"%$q%", ':date'=>$date, ':term'=>$term]);
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
         echo json_encode($stmt->fetchAll());
         exit;
     }

@@ -5,6 +5,7 @@
   const content  = document.getElementById('page-content');
   const overlay  = document.getElementById('sidebar-overlay');
   const toggle   = document.getElementById('sidebarToggle');
+<<<<<<< HEAD
   const themeToggle = document.getElementById('themeToggle');
   const MOBILE_BP = 900;
 
@@ -30,6 +31,10 @@
     });
   }
 
+=======
+  const MOBILE_BP = 900;
+
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
   function isMobile() { return window.innerWidth <= MOBILE_BP; }
 
   function openSidebar() {

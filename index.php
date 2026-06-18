@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once 'includes/db.php';
+<<<<<<< HEAD
 require_once 'includes/auth.php';
 
 authBootstrap();
@@ -21,6 +22,17 @@ if (!$permission || !can($permission)) {
 // no HTML layout needed, the page will output JSON and call exit()
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_permission($permission);
+=======
+include 'includes/update_banner.php';
+
+$page = $_GET['page'] ?? 'students';
+$allowed = ['students','attendance','view_attendance','print_attendance','grades','score_settings','courses','departments','instructors','sections','subjects','sync'];
+if (!in_array($page, $allowed)) $page = 'students';
+
+// If this is a POST (AJAX) request, just include the page and exit —
+// no HTML layout needed, the page will output JSON and call exit()
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
     include "pages/{$page}.php";
     exit;
 }
@@ -28,18 +40,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $titles = [
   'students'=>'Student Records','attendance'=>'Attendance','view_attendance'=>'View Attendance',
   'print_attendance'=>'Print Attendance','grades'=>'Grading Form','score_settings'=>'Score Settings',
+<<<<<<< HEAD
   'courses'=>'Courses','departments'=>'Departments','instructors'=>'Instructors','instructor_accounts'=>'Instructor Accounts',
   'sections'=>'Sections','subjects'=>'Subjects','sync'=>'Database Sync'
 ];
 $currentTitle = $titles[$page] ?? 'Dashboard';
 $managementPages = ['departments','courses','sections','subjects','instructors','instructor_accounts'];
 $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_sections','manage_subjects','manage_instructors','manage_users']);
+=======
+  'courses'=>'Courses','departments'=>'Departments','instructors'=>'Instructors',
+  'sections'=>'Sections','subjects'=>'Subjects','sync'=>'Database Sync'
+];
+$currentTitle = $titles[$page] ?? 'Dashboard';
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<<<<<<< HEAD
   <title>TalaKlase - <?= htmlspecialchars($currentTitle) ?></title>
   <script>
     (function () {
@@ -47,6 +67,9 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
       document.documentElement.dataset.theme = savedTheme === 'dark' ? 'dark' : 'light';
     })();
   </script>
+=======
+  <title>TalaKlase — <?= htmlspecialchars($currentTitle) ?></title>
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css"/>
   <link rel="stylesheet" href="assets/css/style.css"/>
@@ -66,6 +89,7 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
         <span>TalaKlase</span>
       </div>
       <div class="sidebar-subtitle">Your Records, Your Way</div>
+<<<<<<< HEAD
       <a href="logout.php" class="sidebar-logout">
         <i class="bi bi-box-arrow-right"></i> Logout
       </a>
@@ -146,6 +170,49 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
           <div class="sidebar-user-role"><?= htmlspecialchars(current_user()['role'] ?? '') ?></div>
         </div>
       </div>
+=======
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Students</div>
+      <a href="?page=students" class="nav-link <?= $page==='students'?'active':'' ?>">
+        <i class="bi bi-people-fill"></i> Student Records
+      </a>
+      <a href="?page=attendance" class="nav-link <?= $page==='attendance'?'active':'' ?>">
+        <i class="bi bi-calendar-check-fill"></i> Attendance
+      </a>
+      <a href="?page=view_attendance" class="nav-link <?= $page==='view_attendance'?'active':'' ?>">
+        <i class="bi bi-eye-fill"></i> View Attendance
+      </a>
+      <a href="?page=grades" class="nav-link <?= $page==='grades'?'active':'' ?>">
+        <i class="bi bi-journal-text"></i> Grading Form
+      </a>
+      <a href="?page=sync" class="nav-link <?= $page==='sync'?'active':'' ?>">
+        <i class="bi bi-arrow-left-right"></i> DB Sync
+      </a>
+
+      <div class="nav-section-label mt-3">Management</div>
+      <a href="?page=departments" class="nav-link <?= $page==='departments'?'active':'' ?>">
+        <i class="bi bi-building"></i> Departments
+      </a>
+      <a href="?page=courses" class="nav-link <?= $page==='courses'?'active':'' ?>">
+        <i class="bi bi-book-fill"></i> Courses
+      </a>
+      <a href="?page=sections" class="nav-link <?= $page==='sections'?'active':'' ?>">
+        <i class="bi bi-grid-fill"></i> Sections
+      </a>
+      <a href="?page=subjects" class="nav-link <?= $page==='subjects'?'active':'' ?>">
+        <i class="bi bi-file-earmark-text-fill"></i> Subjects
+      </a>
+      <a href="?page=instructors" class="nav-link <?= $page==='instructors'?'active':'' ?>">
+        <i class="bi bi-person-badge-fill"></i> Instructors
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span class="status-dot"></span>
+      <?= htmlspecialchars($_SESSION['db_source'] ?? 'Connecting...') ?>
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
     </div>
   </div>
 
@@ -160,6 +227,7 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
 
       <h5 class="mb-0 page-title"><?= htmlspecialchars($currentTitle) ?></h5>
 
+<<<<<<< HEAD
       <div class="top-actions">
         <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode">
           <i class="bi bi-moon-stars-fill"></i>
@@ -170,6 +238,11 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
           <i class="bi bi-wifi"></i>
           <span><?= htmlspecialchars($_SESSION['db_source'] ?? '...') ?></span>
         </div>
+=======
+      <div class="db-badge">
+        <i class="bi bi-wifi"></i>
+        <span><?= htmlspecialchars($_SESSION['db_source'] ?? '...') ?></span>
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
       </div>
     </div>
 
@@ -184,6 +257,7 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
 <!-- ── BOTTOM NAV (mobile shortcut) ── -->
 <nav class="bottom-nav">
   <div class="bottom-nav-items">
+<<<<<<< HEAD
     <?php if (can('view_students')): ?>
     <a href="?page=students" class="bottom-nav-item <?= $page==='students'?'active':'' ?>">
       <i class="bi bi-people-fill"></i> Students
@@ -204,6 +278,20 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
       <i class="bi bi-building"></i> Manage
     </a>
     <?php endif; ?>
+=======
+    <a href="?page=students"    class="bottom-nav-item <?= $page==='students'?'active':'' ?>">
+      <i class="bi bi-people-fill"></i> Students
+    </a>
+    <a href="?page=attendance"  class="bottom-nav-item <?= $page==='attendance'?'active':'' ?>">
+      <i class="bi bi-calendar-check-fill"></i> Attend.
+    </a>
+    <a href="?page=grades"      class="bottom-nav-item <?= $page==='grades'?'active':'' ?>">
+      <i class="bi bi-journal-text"></i> Grades
+    </a>
+    <a href="?page=departments" class="bottom-nav-item <?= in_array($page,['departments','courses','sections','subjects','instructors'])?'active':'' ?>">
+      <i class="bi bi-building"></i> Manage
+    </a>
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
     <a href="#" class="bottom-nav-item" id="moreMenuBtn">
       <i class="bi bi-grid-3x3-gap-fill"></i> More
     </a>

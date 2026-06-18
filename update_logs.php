@@ -1,8 +1,11 @@
 <?php
 // update_logs.php
 // Displays update history log
+<<<<<<< HEAD
 require_once __DIR__ . '/includes/auth.php';
 require_permission('manage_updates');
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 
 $log_file = __DIR__ . '/logs/update_log.txt';
 ?>

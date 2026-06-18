@@ -2,10 +2,13 @@
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     return;
 }
+<<<<<<< HEAD
 
 if (!function_exists('can') || !can('manage_updates')) {
     return;
 }
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 ?>
 
 <!-- Update Banner -->

@@ -1,8 +1,13 @@
 <?php
+<<<<<<< HEAD
 // sync.php - display only, all logic is in sync_api.php
 // This file is included by index.php so no POST handling here
 require_once __DIR__ . '/../includes/auth.php';
 require_permission('sync_settings');
+=======
+// sync.php — display only, all logic is in sync_api.php
+// This file is included by index.php so no POST handling here
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 ?>
 
 <div class="card mb-3">

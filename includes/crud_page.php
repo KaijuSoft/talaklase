@@ -17,11 +17,19 @@ $config = [
 */
 
 if (session_status() === PHP_SESSION_NONE) {
+<<<<<<< HEAD
     session_start();
 }
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_permission_any(['manage_departments','manage_courses','manage_sections','manage_subjects','manage_instructors']);
+=======
+    if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+}
+require_once __DIR__ . '/../includes/db.php';
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 $pdo = getConnection();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

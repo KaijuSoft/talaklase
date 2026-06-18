@@ -1,7 +1,10 @@
 <?php
 require_once __DIR__ . '/../includes/db.php';
+<<<<<<< HEAD
 require_once __DIR__ . '/../includes/auth.php';
 require_permission('manage_score_settings');
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 $pdo = getConnection();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

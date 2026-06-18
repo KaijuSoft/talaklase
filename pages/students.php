@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/db.php';
+<<<<<<< HEAD
 require_once __DIR__ . '/../includes/auth.php';
 require_permission('view_students');
 $pdo = getConnection();
@@ -31,17 +32,24 @@ function instructorCanUseSection(array $sectionScope, int $sectionId): bool {
     return !empty($sectionScope['section_ids']) && in_array($sectionId, $sectionScope['section_ids'], true);
 }
 
+=======
+$pdo = getConnection();
+
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 // ---------- ACTIONS ----------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     header('Content-Type: application/json');
 
     if ($action === 'add') {
+<<<<<<< HEAD
         require_permission('edit_students');
         if ($isInstructorScoped && !instructorCanUseSection($sectionScope, (int)($_POST['section_id'] ?? 0))) {
             echo json_encode(['success'=>false,'message'=>'You can only add students to sections you created.']);
             exit;
         }
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
         try {
             $pdo->beginTransaction();
             // Duplicate check
@@ -80,11 +88,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'update') {
+<<<<<<< HEAD
         require_permission('edit_students');
         if ($isInstructorScoped && !instructorCanUseSection($sectionScope, (int)($_POST['section_id'] ?? 0))) {
             echo json_encode(['success'=>false,'message'=>'You can only update students in sections you created.']);
             exit;
         }
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
         try {
             $pdo->beginTransaction();
             $upd = $pdo->prepare("UPDATE student SET st_lastname=?,st_name=?,st_middlename=?,st_suffix=?,st_gender=?,course_id=? WHERE st_id=?");
@@ -101,6 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'delete') {
+<<<<<<< HEAD
         require_permission('edit_students');
         try {
             if ($isInstructorScoped) {
@@ -112,6 +124,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     exit;
                 }
             }
+=======
+        try {
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
             $pdo->beginTransaction();
             $pdo->prepare("DELETE FROM student_section WHERE st_id=?")->execute([$_POST['st_id']]);
             $pdo->prepare("DELETE FROM student WHERE st_id=?")->execute([$_POST['st_id']]);
@@ -131,6 +146,7 @@ $pageSize = 15;
 $search   = trim($_GET['q'] ?? '');
 $offset   = ($page - 1) * $pageSize;
 
+<<<<<<< HEAD
 $whereParts = [];
 $params = [];
 
@@ -145,6 +161,10 @@ if ($sectionScope['clause'] !== '') {
 }
 
 $where = $whereParts ? 'WHERE ' . implode(' AND ', $whereParts) : '';
+=======
+$where = $search ? "WHERE (student.st_lastname LIKE :q OR student.st_name LIKE :q OR student.st_middlename LIKE :q)" : "";
+$params = $search ? [':q' => "%$search%"] : [];
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 
 $countSql = "SELECT COUNT(*) FROM student INNER JOIN student_section ON student.st_id=student_section.st_id $where";
 $countStmt = $pdo->prepare($countSql);
@@ -173,6 +193,7 @@ $students = $stmt->fetchAll();
 
 // Dropdowns
 $courses  = $pdo->query("SELECT course_id, course_acronym FROM course ORDER BY course_acronym")->fetchAll();
+<<<<<<< HEAD
 $sectionsSql = "SELECT sectionID, section FROM section";
 $sectionsParams = [];
 if ($isInstructorScoped) {
@@ -187,10 +208,14 @@ $sectionsSql .= " ORDER BY section";
 $sectionsStmt = $pdo->prepare($sectionsSql);
 $sectionsStmt->execute($sectionsParams);
 $sections = $sectionsStmt->fetchAll();
+=======
+$sections = $pdo->query("SELECT sectionID, section FROM section ORDER BY section")->fetchAll();
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 $years    = ['1st Year','2nd Year','3rd Year','4th Year'];
 $genders  = ['Male','Female'];
 ?>
 
+<<<<<<< HEAD
 <!-- Success import -->
 <?php if (!empty($_SESSION['import_success'])): ?>
 
@@ -225,6 +250,9 @@ $genders  = ['Male','Female'];
 <?php unset($_SESSION['import_errors']); ?>
 
 <?php endif; ?>
+=======
+<!-- Stats row -->
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">
     <div class="stat-card">
@@ -237,6 +265,7 @@ $genders  = ['Male','Female'];
       </div>
     </div>
   </div>
+<<<<<<< HEAD
 
 <!-- Stats row -->
 
@@ -251,6 +280,11 @@ $genders  = ['Male','Female'];
   $femaleStmt->execute($params);
   $male   = $maleStmt->fetchColumn();
   $female = $femaleStmt->fetchColumn();
+=======
+  <?php
+  $male   = $pdo->query("SELECT COUNT(*) FROM student WHERE st_gender='Male'")->fetchColumn();
+  $female = $pdo->query("SELECT COUNT(*) FROM student WHERE st_gender='Female'")->fetchColumn();
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
   ?>
   <div class="col-6 col-md-3">
     <div class="stat-card">
@@ -279,7 +313,11 @@ $genders  = ['Male','Female'];
       <div class="d-flex align-items-center gap-3">
         <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-grid-fill"></i></div>
         <div>
+<<<<<<< HEAD
           <div class="stat-value"><?= count($sections) ?></div>
+=======
+          <div class="stat-value"><?= $pdo->query("SELECT COUNT(*) FROM section")->fetchColumn() ?></div>
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
           <div class="stat-label">Sections</div>
         </div>
       </div>
@@ -299,6 +337,7 @@ $genders  = ['Male','Female'];
       <button class="btn btn-outline-secondary btn-sm" onclick="printStudents()">
         <i class="bi bi-printer-fill me-1"></i> Print
       </button>
+<<<<<<< HEAD
       <?php if (can('edit_students')): ?>
       <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addModal">
         <i class="bi bi-person-plus-fill me-1"></i> Add Student
@@ -312,6 +351,11 @@ $genders  = ['Male','Female'];
     Import Excel
 </button>
       <?php endif; ?>
+=======
+      <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addModal">
+        <i class="bi bi-person-plus-fill me-1"></i> Add Student
+      </button>
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
     </div>
   </div>
   <div class="table-responsive">
@@ -327,12 +371,20 @@ $genders  = ['Male','Female'];
           <th>Year</th>
           <th>Gender</th>
           <th>Section</th>
+<<<<<<< HEAD
           <?php if (can('edit_students')): ?><th>Actions</th><?php endif; ?>
+=======
+          <th>Actions</th>
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
         </tr>
       </thead>
       <tbody>
         <?php if (empty($students)): ?>
+<<<<<<< HEAD
           <tr><td colspan="<?= can('edit_students') ? 10 : 9 ?>" class="text-center text-muted py-4"><i class="bi bi-inbox me-2"></i>No students found.</td></tr>
+=======
+          <tr><td colspan="10" class="text-center text-muted py-4"><i class="bi bi-inbox me-2"></i>No students found.</td></tr>
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
         <?php else: foreach ($students as $i => $s): ?>
           <tr>
             <td class="text-muted"><?= $offset + $i + 1 ?></td>
@@ -348,7 +400,10 @@ $genders  = ['Male','Female'];
               </span>
             </td>
             <td><?= htmlspecialchars($s['section']) ?></td>
+<<<<<<< HEAD
             <?php if (can('edit_students')): ?>
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
             <td>
               <button class="btn btn-xs btn-outline-primary btn-sm py-0 px-1"
                 onclick="openEdit(<?= htmlspecialchars(json_encode($s)) ?>)">
@@ -359,7 +414,10 @@ $genders  = ['Male','Female'];
                 <i class="bi bi-trash-fill"></i>
               </button>
             </td>
+<<<<<<< HEAD
             <?php endif; ?>
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
           </tr>
         <?php endforeach; endif; ?>
       </tbody>
@@ -385,7 +443,10 @@ $genders  = ['Male','Female'];
   </div>
 </div>
 
+<<<<<<< HEAD
 <?php if (can('edit_students')): ?>
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 <!-- Add Modal -->
 <div class="modal fade" id="addModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
@@ -486,6 +547,7 @@ $genders  = ['Male','Female'];
     </div>
   </div>
 </div>
+<<<<<<< HEAD
 <div class="modal fade" id="importStudentsModal">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -540,6 +602,11 @@ $genders  = ['Male','Female'];
 const canManageStudents = <?= can('edit_students') ? 'true' : 'false' ?>;
 function saveStudent() {
   if (!canManageStudents) { showToast('You do not have permission to manage students.','danger'); return; }
+=======
+
+<script>
+function saveStudent() {
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
   const data = {
     action:'add',
     lastname:  document.getElementById('add_lastname').value.trim(),
@@ -577,7 +644,10 @@ function openEdit(s) {
 }
 
 function updateStudent() {
+<<<<<<< HEAD
   if (!canManageStudents) { showToast('You do not have permission to manage students.','danger'); return; }
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
   const data = {
     action:'update',
     st_id:     document.getElementById('edit_id').value,
@@ -599,7 +669,10 @@ function updateStudent() {
 }
 
 function deleteStudent(id, name) {
+<<<<<<< HEAD
   if (!canManageStudents) { showToast('You do not have permission to manage students.','danger'); return; }
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
   if (!confirm(`Delete student "${name}"? This cannot be undone.`)) return;
   fetch('',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
     body:new URLSearchParams({action:'delete',st_id:id})})

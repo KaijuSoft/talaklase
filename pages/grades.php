@@ -1,7 +1,10 @@
 <?php
 require_once __DIR__ . '/../includes/db.php';
+<<<<<<< HEAD
 require_once __DIR__ . '/../includes/auth.php';
 require_permission('view_grades');
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 $pdo = getConnection();
 
 // ─── AJAX HANDLERS ────────────────────────────────────────────────────────────
@@ -56,7 +59,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // ── Save scores ───────────────────────────────────────────────────────────
     if ($action === 'save_component') {
+<<<<<<< HEAD
         require_permission('manage_grades');
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
         $sec  = (int)$_POST['section_id'];
         $sub  = (int)$_POST['subject_id'];
         $term = $_POST['term'];
@@ -299,11 +305,17 @@ $subjects = $pdo->query("SELECT sub_id, sub_name FROM subject ORDER BY sub_name"
       <button class="btn btn-sm btn-outline-secondary" onclick="printGrades()">
         <i class="bi bi-printer-fill me-1"></i> Print
       </button>
+<<<<<<< HEAD
       <?php if (can('manage_score_settings')): ?>
       <a href="?page=score_settings" class="btn btn-sm btn-outline-secondary">
         <i class="bi bi-gear-fill me-1"></i> Score Settings
       </a>
       <?php endif; ?>
+=======
+      <a href="?page=score_settings" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-gear-fill me-1"></i> Score Settings
+      </a>
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
     </div>
   </div>
   <div class="card-body">
@@ -363,13 +375,19 @@ $subjects = $pdo->query("SELECT sub_id, sub_name FROM subject ORDER BY sub_name"
     </div>
 
     <!-- Save button -->
+<<<<<<< HEAD
     <?php if (can('manage_grades')): ?>
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
     <div id="saveBtnArea" class="d-none mt-3 d-flex gap-2 align-items-center">
       <button class="btn btn-success" onclick="saveGrades()">
         <i class="bi bi-floppy-fill me-1"></i> Save <span id="saveLabel"></span>
       </button>
     </div>
+<<<<<<< HEAD
     <?php endif; ?>
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 
   </div>
 </div>
@@ -379,7 +397,10 @@ let curTerm = 'Prelim';
 let curComp = 'Participation';
 let gradeRows = [];
 let cache = {};
+<<<<<<< HEAD
 const canManageGrades = <?= can('manage_grades') ? 'true' : 'false' ?>;
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 
 const termLabel = {Prelim:'Prelim',Midterm:'Midterm',PreFinal:'Pre-Finals',Final:'Finals'};
 
@@ -389,7 +410,11 @@ function setTerm(el) {
   curTerm = el.dataset.term;
   const isSummary = curTerm === 'Summary';
   document.getElementById('compTabsWrapper').style.display = isSummary ? 'none' : '';
+<<<<<<< HEAD
   document.getElementById('saveBtnArea')?.classList.add('d-none');
+=======
+  document.getElementById('saveBtnArea').classList.add('d-none');
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
   loadGrid();
 }
 
@@ -417,7 +442,11 @@ function loadGrid() {
   if (!sec || !sub) {
     document.getElementById('gradeGrid').innerHTML =
       '<div class="alert alert-warning mb-0">Please select both a section and a subject.</div>';
+<<<<<<< HEAD
     document.getElementById('saveBtnArea')?.classList.add('d-none');
+=======
+    document.getElementById('saveBtnArea').classList.add('d-none');
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
     return;
   }
   if (curTerm === 'Summary') { loadSummary(); return; }
@@ -436,11 +465,17 @@ function loadGrid() {
 function renderGrid(data) {
   gradeRows = data;
   const isExam = curComp === 'Exam';
+<<<<<<< HEAD
   const lbl = `${curComp} - ${termLabel[curTerm]||curTerm}`;
   if (canManageGrades) {
     document.getElementById('saveLabel').textContent = lbl;
     document.getElementById('saveBtnArea')?.classList.remove('d-none');
   }
+=======
+  const lbl = `${curComp} — ${termLabel[curTerm]||curTerm}`;
+  document.getElementById('saveLabel').textContent = lbl;
+  document.getElementById('saveBtnArea').classList.remove('d-none');
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
 
   if (!data.length) {
     document.getElementById('gradeGrid').innerHTML =
@@ -475,12 +510,20 @@ function renderGrid(data) {
 
     if (isExam) {
       html += `<td><input type="number" class="form-control form-control-sm grade-input text-center"
+<<<<<<< HEAD
         id="score_${row.st_id}" value="${row.score??''}" min="0" step="0.01" placeholder="0" ${canManageGrades ? '' : 'readonly'}/></td>`;
+=======
+        id="score_${row.st_id}" value="${row.score??''}" min="0" step="0.01" placeholder="0"/></td>`;
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
     } else {
       const cols = colDefs[curComp];
       cols.forEach((col, j) => {
         html += `<td><input type="number" class="form-control form-control-sm grade-input text-center"
+<<<<<<< HEAD
           id="s${j+1}_${row.st_id}" value="${row[col]??''}" min="0" step="0.01" placeholder="0" ${canManageGrades ? '' : 'readonly'}/></td>`;
+=======
+          id="s${j+1}_${row.st_id}" value="${row[col]??''}" min="0" step="0.01" placeholder="0"/></td>`;
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
       });
     }
     html += '</tr>';
@@ -490,7 +533,10 @@ function renderGrid(data) {
 }
 
 function saveGrades() {
+<<<<<<< HEAD
   if (!canManageGrades) { showToast('You do not have permission to save grades.','danger'); return; }
+=======
+>>>>>>> dad965eae0886277347cae4c6fc181143c8fa104
   const {sec, sub} = getSecSub();
   if (!sec || !sub) { showToast('Select section and subject first.','warning'); return; }
   const lbl = `${curComp} grades for ${termLabel[curTerm]||curTerm}`;
