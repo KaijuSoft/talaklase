@@ -311,6 +311,14 @@ $genders  = ['Male','Female'];
     <i class="bi bi-file-earmark-excel"></i>
     Import Excel
 </button>
+
+	<a href="./assets/templates/student_import_template.xlsx"
+				download
+					class="btn btn-success">
+						<i class="bi bi-download"></i>
+							Download Template
+						</a>
+		
       <?php endif; ?>
     </div>
   </div>
@@ -489,7 +497,21 @@ $genders  = ['Male','Female'];
 <div class="modal fade" id="importStudentsModal">
     <div class="modal-dialog">
         <div class="modal-content">
+						<div class="alert alert-info mt-2">
+    <strong>Excel Format:</strong><br>
 
+    Last Name | First Name | Middle Name |
+    Suffix | Gender | Course |
+    Section | Year Level
+
+    <hr>
+
+    Example:<br>
+
+    Dela Cruz | Juan | Santos |
+    | Male | BSIT |
+    Xiaomi | 1
+</div>
             <form
                 method="post"
                 enctype="multipart/form-data"
@@ -500,7 +522,8 @@ $genders  = ['Male','Female'];
                         Import Students from Excel
                     </h5>
                 </div>
-
+		
+	
                 <div class="modal-body">
 
                     <input
@@ -530,7 +553,6 @@ $genders  = ['Male','Female'];
                 </div>
 
             </form>
-
         </div>
     </div>
 </div>

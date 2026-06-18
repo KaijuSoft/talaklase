@@ -42,6 +42,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $stmt = $pdo->prepare('INSERT INTO section (section, course_id, inst_id) VALUES (?, ?, ?)');
             $stmt->execute([$sectionName, $courseId, $ownerInstId]);
+			$sectionId = $pdo->lastInsertId();
+
+$instructors = $_POST['instructors'] ?? [];
+
+if (!is_array($instructors)) {
+    $instructors = [$instructors];
+}
+
+foreach ($instructors as $instId) {
+    $stmt = $pdo->prepare("
+        INSERT INTO section_instructors
+        (sectionID, inst_id)
+        VALUES (?, ?)
+    ");
+
+    $stmt->execute([
+        $sectionId,
+        $instId
+    ]);
+}
             echo json_encode(['success' => true, 'message' => 'Section created.']);
         } catch (Throwable $e) {
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -84,6 +104,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $stmt = $pdo->prepare('UPDATE section SET section = ?, course_id = ?, inst_id = ? WHERE sectionID = ?');
             $stmt->execute([$sectionName, $courseId, $ownerInstId, $sectionId]);
+			// Remove old instructor assignments
+$pdo->prepare(
+    "DELETE FROM section_instructors
+     WHERE sectionID = ?"
+)->execute([$sectionId]);
+
+// Add new instructor assignments
+$instructors = $_POST['instructors'] ?? [];
+
+if (!is_array($instructors)) {
+    $instructors = [$instructors];
+}
+
+foreach ($instructors as $instId) {
+
+    $stmt = $pdo->prepare(
+        "INSERT INTO section_instructors
+         (sectionID, inst_id)
+         VALUES (?, ?)"
+    );
+
+    $stmt->execute([
+        $sectionId,
+        $instId
+    ]);
+}
             echo json_encode(['success' => true, 'message' => 'Section updated.']);
         } catch (Throwable $e) {
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -112,12 +158,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        try {
-            $pdo->prepare('DELETE FROM section WHERE sectionID = ?')->execute([$sectionId]);
-            echo json_encode(['success' => true, 'message' => 'Section deleted.']);
-        } catch (Throwable $e) {
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-        }
+      try {
+
+    $pdo->prepare(
+        "DELETE FROM section_instructors
+         WHERE sectionID = ?"
+    )->execute([$sectionId]);
+
+    $pdo->prepare(
+        'DELETE FROM section
+         WHERE sectionID = ?'
+    )->execute([$sectionId]);
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Section deleted.'
+    ]);
+
+} catch (Throwable $e) {
+
+    echo json_encode([
+        'success' => false,
+        'message' => $e->getMessage()
+    ]);
+}
+exit;
         exit;
     }
 
@@ -130,13 +195,39 @@ $instructors = $pdo->query('SELECT inst_id, inst_name FROM instructor ORDER BY i
 
 if ($canManageAllSections) {
     $sectionsStmt = $pdo->query(
-        "SELECT s.sectionID, s.section, s.course_id, s.inst_id, c.course_acronym, i.inst_name
-         FROM section s
-         LEFT JOIN course c ON c.course_id = s.course_id
-         LEFT JOIN instructor i ON i.inst_id = s.inst_id
-         ORDER BY s.section"
-    );
-    $sections = $sectionsStmt->fetchAll();
+    "SELECT
+        s.sectionID,
+        s.section,
+        s.course_id,
+        c.course_acronym,
+
+        GROUP_CONCAT(
+            i.inst_name
+            ORDER BY i.inst_name
+            SEPARATOR ', '
+        ) AS inst_name
+
+     FROM section s
+
+     LEFT JOIN course c
+        ON c.course_id = s.course_id
+
+     LEFT JOIN section_instructors si
+        ON si.sectionID = s.sectionID
+
+     LEFT JOIN instructor i
+        ON i.inst_id = si.inst_id
+
+     GROUP BY
+        s.sectionID,
+        s.section,
+        s.course_id,
+        c.course_acronym
+
+     ORDER BY s.section"
+);
+
+$sections = $sectionsStmt->fetchAll();
 } else {
     $ownedIds = current_user_owned_section_ids($pdo);
     if (empty($ownedIds)) {
@@ -144,17 +235,44 @@ if ($canManageAllSections) {
     } else {
         $placeholders = implode(',', array_fill(0, count($ownedIds), '?'));
         $sectionsStmt = $pdo->prepare(
-            "SELECT s.sectionID, s.section, s.course_id, s.inst_id, c.course_acronym, i.inst_name
-             FROM section s
-             LEFT JOIN course c ON c.course_id = s.course_id
-             LEFT JOIN instructor i ON i.inst_id = s.inst_id
-             WHERE s.sectionID IN ($placeholders)
-             ORDER BY s.section"
-        );
+    "SELECT
+        s.sectionID,
+        s.section,
+        s.course_id,
+        c.course_acronym,
+
+        GROUP_CONCAT(
+            i.inst_name
+            ORDER BY i.inst_name
+            SEPARATOR ', '
+        ) AS inst_name
+
+     FROM section s
+
+     LEFT JOIN course c
+        ON c.course_id = s.course_id
+
+     LEFT JOIN section_instructors si
+        ON si.sectionID = s.sectionID
+
+     LEFT JOIN instructor i
+        ON i.inst_id = si.inst_id
+
+     WHERE s.sectionID IN ($placeholders)
+
+     GROUP BY
+        s.sectionID,
+        s.section,
+        s.course_id,
+        c.course_acronym
+
+     ORDER BY s.section"
+);
+	}
         $sectionsStmt->execute($ownedIds);
         $sections = $sectionsStmt->fetchAll();
     }
-}
+
 ?>
 
 <div class="card">
@@ -229,13 +347,30 @@ if ($canManageAllSections) {
         </div>
         <?php if ($canManageAllSections): ?>
         <div class="mb-0">
-          <label class="form-label">Owner Instructor</label>
-          <select class="form-select" id="add_inst_id">
-            <option value="">Unassigned</option>
-            <?php foreach ($instructors as $instructor): ?>
-              <option value="<?= (int)$instructor['inst_id'] ?>"><?= htmlspecialchars($instructor['inst_name']) ?></option>
-            <?php endforeach; ?>
-          </select>
+          
+         <div class="mb-3">
+    <label class="form-label">Instructors</label>
+
+    <?php foreach ($instructors as $instructor): ?>
+
+        <div class="form-check">
+
+            <input
+                class="form-check-input"
+                type="checkbox"
+                name="add_instructors[]"
+                value="<?= (int)$instructor['inst_id'] ?>">
+
+            <label class="form-check-label">
+                <?= htmlspecialchars($instructor['inst_name']) ?>
+            </label>
+
+        </div>
+
+    <?php endforeach; ?>
+
+</div>
+
         </div>
         <?php endif; ?>
       </div>
@@ -270,13 +405,29 @@ if ($canManageAllSections) {
         </div>
         <?php if ($canManageAllSections): ?>
         <div class="mb-0">
-          <label class="form-label">Owner Instructor</label>
-          <select class="form-select" id="edit_inst_id">
-            <option value="">Unassigned</option>
-            <?php foreach ($instructors as $instructor): ?>
-              <option value="<?= (int)$instructor['inst_id'] ?>"><?= htmlspecialchars($instructor['inst_name']) ?></option>
-            <?php endforeach; ?>
-          </select>
+          
+         <div class="mb-0">
+
+    <label class="form-label">Instructors</label>
+
+    <?php foreach ($instructors as $instructor): ?>
+
+        <div class="form-check">
+
+            <input
+                class="form-check-input edit-instructor"
+                type="checkbox"
+                value="<?= (int)$instructor['inst_id'] ?>">
+
+            <label class="form-check-label">
+                <?= htmlspecialchars($instructor['inst_name']) ?>
+            </label>
+
+        </div>
+
+    <?php endforeach; ?>
+
+</div>
         </div>
         <?php endif; ?>
       </div>
@@ -302,52 +453,125 @@ function postSection(params) {
 }
 
 function saveRecord() {
-  const params = {
-    action: 'add',
-    section: document.getElementById('add_section').value.trim(),
-    course_id: document.getElementById('add_course_id').value,
-  };
-  if (canManageAllSections) {
-    params.inst_id = document.getElementById('add_inst_id').value;
-  }
-  postSection(params).then(result => {
-    showToast(result.message, result.success ? 'success' : 'danger');
-    if (result.success) {
-      bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
-      setTimeout(() => location.reload(), 700);
-    }
+
+  const params = new URLSearchParams();
+
+  params.append('action', 'add');
+  params.append('section', document.getElementById('add_section').value.trim());
+  params.append('course_id', document.getElementById('add_course_id').value);
+
+  document
+    .querySelectorAll('input[name="add_instructors[]"]:checked')
+    .forEach(cb => {
+        params.append('instructors[]', cb.value);
+    });
+
+  params.append('csrf_token', csrfToken);
+
+  fetch('', {
+      method: 'POST',
+      headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: params
+  })
+  .then(r => r.json())
+  .then(result => {
+      showToast(result.message, result.success ? 'success' : 'danger');
+
+      if (result.success) {
+          bootstrap.Modal
+              .getInstance(document.getElementById('addModal'))
+              .hide();
+
+          setTimeout(() => location.reload(), 700);
+      }
   });
 }
 
 function openEdit(row) {
-  document.getElementById('edit_sectionID').value = row.sectionID || '';
-  document.getElementById('edit_section').value = row.section || '';
-  document.getElementById('edit_course_id').value = row.course_id || '';
-  if (canManageAllSections && document.getElementById('edit_inst_id')) {
-    document.getElementById('edit_inst_id').value = row.inst_id || '';
-  }
-  new bootstrap.Modal(document.getElementById('editModal')).show();
+
+    document.getElementById('edit_sectionID').value =
+        row.sectionID || '';
+
+    document.getElementById('edit_section').value =
+        row.section || '';
+
+    document.getElementById('edit_course_id').value =
+        row.course_id || '';
+
+    document.querySelectorAll('.edit-instructor')
+        .forEach(cb => cb.checked = false);
+
+    if (row.instructors) {
+
+        row.instructors.forEach(id => {
+
+            document.querySelectorAll('.edit-instructor')
+                .forEach(cb => {
+
+                    if (cb.value == id) {
+                        cb.checked = true;
+                    }
+
+                });
+
+        });
+
+    }
+
+    new bootstrap.Modal(
+        document.getElementById('editModal')
+    ).show();
 }
+
 
 function updateRecord() {
-  const params = {
-    action: 'update',
-    sectionID: document.getElementById('edit_sectionID').value,
-    section: document.getElementById('edit_section').value.trim(),
-    course_id: document.getElementById('edit_course_id').value,
-  };
-  if (canManageAllSections && document.getElementById('edit_inst_id')) {
-    params.inst_id = document.getElementById('edit_inst_id').value;
-  }
-  postSection(params).then(result => {
-    showToast(result.message, result.success ? 'success' : 'danger');
-    if (result.success) {
-      bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
-      setTimeout(() => location.reload(), 700);
-    }
+
+  const params = new URLSearchParams();
+
+  params.append('action', 'update');
+  params.append('sectionID',
+      document.getElementById('edit_sectionID').value);
+
+  params.append('section',
+      document.getElementById('edit_section').value.trim());
+
+  params.append('course_id',
+      document.getElementById('edit_course_id').value);
+
+  document
+    .querySelectorAll('.edit-instructor:checked')
+    .forEach(cb => {
+        params.append('instructors[]', cb.value);
+    });
+
+  params.append('csrf_token', csrfToken);
+
+  fetch('', {
+      method: 'POST',
+      headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: params
+  })
+  .then(r => r.json())
+  .then(result => {
+
+      showToast(result.message,
+          result.success ? 'success' : 'danger');
+
+      if (result.success) {
+
+          bootstrap.Modal
+              .getInstance(document.getElementById('editModal'))
+              .hide();
+
+          setTimeout(() => location.reload(), 700);
+      }
+
   });
 }
-
 function deleteRecord(id, name) {
   if (!confirm(`Delete section "${name}"?`)) return;
   postSection({ action: 'delete', sectionID: id }).then(result => {

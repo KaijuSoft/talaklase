@@ -251,7 +251,11 @@ function current_user_owned_section_ids(PDO $pdo): array {
         return [];
     }
 
-    $stmt = $pdo->prepare("SELECT sectionID FROM section WHERE inst_id = ? ORDER BY section");
+  $stmt = $pdo->prepare("
+    SELECT sectionID
+    FROM section_instructors
+    WHERE inst_id = ?
+");
     $stmt->execute([(int)$user['inst_id']]);
 
     return array_values(array_filter(array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN))));

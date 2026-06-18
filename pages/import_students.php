@@ -18,9 +18,9 @@ $rows = $spreadsheet
     ->toArray();
 
 unset($rows[0]); // Remove header
-
 $imported = 0;
 $skipped = 0;
+$errors = [];
 
 foreach ($rows as $row) {
 
@@ -39,9 +39,12 @@ foreach ($rows as $row) {
     }
 	
 if ($yearlvl < 1 || $yearlvl > 4) {
-    //die("Invalid year level: [" . $yearlvl . "]");
-	$skipped++;
-	continue;
+
+    $errors[] =
+        "{$lastname}, {$firstname}: Invalid year level '{$yearlvl}'";
+
+    $skipped++;
+    continue;
 }
 	
 	//if (!in_array($yearlvl, [1,2,3,4], true)) {
@@ -64,10 +67,14 @@ if ($yearlvl < 1 || $yearlvl > 4) {
 
 
 	
-   if (!$courseId) {
-        $skipped++;
-        continue;
-    }
+  if (!$courseId) {
+
+    $errors[] =
+        "{$lastname}, {$firstname}: Course '{$course}' not found";
+
+    $skipped++;
+    continue;
+}
 	
 	$sectionStmt = $pdo->prepare("
     SELECT sectionID
@@ -81,7 +88,12 @@ if ($yearlvl < 1 || $yearlvl > 4) {
 	$sectionId = $sectionStmt->fetchColumn();
 
 	if (!$sectionId) {
-    die("Section not found: " . $section);
+
+    $errors[] =
+        "{$lastname}, {$firstname}: Section '{$section}' not found";
+
+    $skipped++;
+    continue;
 }
 
 	//if (!$sectionId) {
@@ -105,10 +117,14 @@ if ($yearlvl < 1 || $yearlvl > 4) {
         $middlename
     ]);
 
-    if ($check->fetch()) {
-        $skipped++;
-        continue;
-    }
+   if ($check->fetch()) {
+
+    $errors[] =
+        "{$lastname}, {$firstname}: Student already exists";
+
+    $skipped++;
+    continue;
+}
 $pdo->beginTransaction();
 
 	try{
@@ -154,14 +170,21 @@ $secInsert->execute([
     $imported++;
 	$pdo->commit();
 	
-	}catch (Excemption $e) {
+	} catch (Throwable $e) {
 		$pdo->rollBack();
+		
+		$errors[] =
+    "{$lastname}, {$firstname}: " . $e->getMessage();
+		
 		$skipped++;
 	}
 }
 
+$_SESSION['import_errors'] = $errors;
+
 $_SESSION['import_success'] =
     "Imported {$imported} students. Skipped {$skipped} rows.";
+	
 
 header('Location: ../index.php?page=students');
 exit;
