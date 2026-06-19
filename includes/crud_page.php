@@ -70,6 +70,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         exit;
     }
+	
+	if ($action === 'archive') {
+
+    try {
+
+        if ($config['table'] !== 'subject') {
+            throw new Exception('Archive not supported.');
+        }
+
+        $pdo->prepare("
+            UPDATE subject
+            SET is_active = 0
+            WHERE sub_id = ?
+        ")->execute([
+            $_POST['sub_id']
+        ]);
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Subject archived.'
+        ]);
+
+    } catch (Exception $e) {
+
+        echo json_encode([
+            'success' => false,
+            'message' => $e->getMessage()
+        ]);
+    }
+
+    exit;
+}
+
+
+if ($action === 'restore') {
+
+    try {
+
+        $pdo->prepare("
+            UPDATE subject
+            SET is_active = 1
+            WHERE sub_id = ?
+        ")->execute([
+            $_POST['sub_id']
+        ]);
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Subject restored.'
+        ]);
+
+    } catch (Exception $e) {
+
+        echo json_encode([
+            'success' => false,
+            'message' => $e->getMessage()
+        ]);
+    }
+
+    exit;
+}
+
 
     if ($action === 'delete') {
         try {
@@ -91,7 +153,31 @@ foreach ($config['fields'] as $f) {
 }
 
 // Load records
-$rows = $pdo->query("SELECT * FROM {$config['table']} ORDER BY {$config['order']}")->fetchAll();
+$showArchived =
+    isset($_GET['show_archived']);
+
+if ($config['table'] === 'subject') {
+
+    $where =
+        $showArchived
+            ? ''
+            : 'WHERE is_active = 1';
+
+    $rows = $pdo->query("
+        SELECT *
+        FROM subject
+        {$where}
+        ORDER BY {$config['order']}
+    ")->fetchAll();
+
+} else {
+
+    $rows = $pdo->query("
+        SELECT *
+        FROM {$config['table']}
+        ORDER BY {$config['order']}
+    ")->fetchAll();
+}
 ?>
 
 <div class="card">
@@ -100,6 +186,21 @@ $rows = $pdo->query("SELECT * FROM {$config['table']} ORDER BY {$config['order']
     <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addModal">
       <i class="bi bi-plus-lg me-1"></i> Add <?= rtrim($config['title'],'s') ?>
     </button>
+	<?php if ($config['table'] === 'subject'): ?>
+
+	<a
+		href="?page=subjects<?= $showArchived ? '' : '&show_archived=1' ?>"
+			class="btn btn-secondary btn-sm ms-2">
+
+				<i class="bi bi-eye"></i>
+
+				<?= $showArchived
+					? 'Hide Archived'
+					: 'Show Archived' ?>
+
+	</a>
+
+	<?php endif; ?>
   </div>
   <div class="table-responsive">
     <table class="table table-hover mb-0">
@@ -107,7 +208,11 @@ $rows = $pdo->query("SELECT * FROM {$config['table']} ORDER BY {$config['order']
         <tr>
           <th>#</th>
           <?php foreach ($config['list_cols'] as $col => $label): ?><th><?= $label ?></th><?php endforeach; ?>
-          <th>Actions</th>
+          <?php if ($config['table'] === 'subject'): ?>
+			<th>Status</th>
+			<?php endif; ?>
+
+		<th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -115,19 +220,92 @@ $rows = $pdo->query("SELECT * FROM {$config['table']} ORDER BY {$config['order']
           <tr><td colspan="<?= count($config['list_cols'])+2 ?>" class="text-center text-muted py-4"><i class="bi bi-inbox me-2"></i>No records found.</td></tr>
         <?php else: foreach ($rows as $i => $row): ?>
           <tr>
-            <td class="text-muted"><?= $i+1 ?></td>
+            <td class="text-muted"><?= $i+1 ?>
+			</td>
+			
+			
             <?php foreach ($config['list_cols'] as $col => $label): ?>
-              <td><?= htmlspecialchars($row[$col] ?? '') ?></td>
+			
+			
+			
+              <td>
+						
+				<?= htmlspecialchars($row[$col] ?? '') ?></td>
             <?php endforeach; ?>
+			
+			<?php if ($config['table'] === 'subject'): ?>
+
+<td>
+
+<?php if ((int)($row['is_active'] ?? 1) === 1): ?>
+
+<span class="badge bg-success">
+Active
+</span>
+
+<?php else: ?>
+
+<span class="badge bg-secondary">
+Archived
+</span>
+
+<?php endif; ?>
+
+</td>
+
+<?php endif; ?>
             <td>
+			
               <button class="btn btn-sm btn-outline-primary py-0 px-1"
                 onclick='openEdit(<?= htmlspecialchars(json_encode($row)) ?>)'>
                 <i class="bi bi-pencil-fill"></i>
               </button>
-              <button class="btn btn-sm btn-outline-danger py-0 px-1 ms-1"
-                onclick="deleteRecord(<?= $row[$config['pk']] ?>, '<?= htmlspecialchars($row[array_key_first($config['list_cols'])]) ?>')">
-                <i class="bi bi-trash-fill"></i>
-              </button>
+            <?php if ($config['table'] === 'subject'): ?>
+
+<?php if ((int)($row['is_active'] ?? 1) === 1): ?>
+
+<button
+    class="btn btn-sm btn-outline-warning py-0 px-1 ms-1"
+    onclick="archiveRecord(
+        <?= $row[$config['pk']] ?>,
+        '<?= htmlspecialchars($row[array_key_first($config['list_cols'])]) ?>'
+    )">
+
+    <i class="bi bi-archive-fill"></i>
+
+</button>
+
+<?php else: ?>
+
+<button
+    class="btn btn-sm btn-outline-success py-0 px-1 ms-1"
+    onclick="restoreRecord(
+        <?= $row[$config['pk']] ?>,
+        '<?= htmlspecialchars($row[array_key_first($config['list_cols'])]) ?>'
+    )">
+
+    <i class="bi bi-arrow-clockwise"></i>
+
+</button>
+
+<?php endif; ?>
+
+<?php else: ?>
+
+
+
+<button
+    class="btn btn-sm btn-outline-danger py-0 px-1 ms-1"
+    onclick="deleteRecord(
+        <?= $row[$config['pk']] ?>,
+        '<?= htmlspecialchars($row[array_key_first($config['list_cols'])]) ?>'
+    )">
+
+    <i class="bi bi-trash-fill"></i>
+
+</button>
+
+<?php endif; ?>
             </td>
           </tr>
         <?php endforeach; endif; ?>
@@ -239,5 +417,71 @@ function deleteRecord(id, name) {
     showToast(res.message,res.success?'success':'danger');
     if(res.success) setTimeout(()=>location.reload(),800);
   });
+}
+
+function archiveRecord(id, name) {
+
+    if (!confirm(
+        `Archive "${name}"?`
+    )) return;
+
+    fetch('', {
+        method:'POST',
+        headers:{
+            'Content-Type':'application/x-www-form-urlencoded'
+        },
+        body:new URLSearchParams({
+            action:'archive',
+            sub_id:id
+        })
+    })
+    .then(r=>r.json())
+    .then(res=>{
+
+        showToast(
+            res.message,
+            res.success ? 'success' : 'danger'
+        );
+
+        if(res.success){
+            setTimeout(
+                ()=>location.reload(),
+                800
+            );
+        }
+    });
+}
+
+function restoreRecord(id, name) {
+
+    if (!confirm(
+        `Restore "${name}"?`
+    )) return;
+
+    fetch('', {
+        method:'POST',
+        headers:{
+            'Content-Type':'application/x-www-form-urlencoded'
+        },
+        body:new URLSearchParams({
+            action:'restore',
+            sub_id:id
+        })
+    })
+    .then(r=>r.json())
+    .then(res=>{
+
+        showToast(
+            res.message,
+            res.success ? 'success' : 'danger'
+        );
+
+        if(res.success){
+            setTimeout(
+                ()=>location.reload(),
+                800
+            );
+        }
+    });
 }
 </script>

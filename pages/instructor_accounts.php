@@ -24,6 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $deptId = trim($_POST['dept_id'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $password = (string)($_POST['password'] ?? '');
+		$role = trim($_POST['role'] ?? 'instructor');
 
         if ($name === '' || $deptId === '' || $email === '' || $password === '') {
             echo json_encode(['success' => false, 'message' => 'Name, department, email, and password are required.']);
@@ -52,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $email,
                 $email,
                 password_hash($password, PASSWORD_DEFAULT),
-                'instructor',
+                $role,
                 $instId,
             ]);
 
@@ -130,11 +131,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $departments = $pdo->query('SELECT dept_id, dept_name FROM department ORDER BY dept_name')->fetchAll();
 $rows = $pdo->query(
-  "SELECT u.id, u.name, u.username AS email, u.inst_id, u.is_active, i.dept_id, d.dept_name
+  "SELECT u.name, u.username AS email, u.role, u.inst_id, u.is_active, i.dept_id, d.dept_name
    FROM users u
    LEFT JOIN instructor i ON i.inst_id = u.inst_id
    LEFT JOIN department d ON d.dept_id = i.dept_id
-   WHERE u.role = 'instructor_admin'
+   WHERE u.role <> 'admin'
    ORDER BY u.name"
 )->fetchAll();
 ?>
@@ -153,10 +154,11 @@ $rows = $pdo->query(
     <table class="table table-hover mb-0 align-middle">
       <thead>
         <tr>
-          <th>Inst ID</th>
+          
           <th>Name</th>
           <th>Department</th>
           <th>Email</th>
+		  <th>Role</th>
           <th class="text-end">Actions</th>
         </tr>
       </thead>
@@ -168,10 +170,11 @@ $rows = $pdo->query(
         <?php else: ?>
           <?php foreach ($rows as $row): ?>
             <tr>
-              <td><?= htmlspecialchars((string)$row['inst_id']) ?></td>
+              
               <td><?= htmlspecialchars($row['name'] ?? '') ?></td>
               <td><?= htmlspecialchars($row['dept_name'] ?? '') ?></td>
               <td><?= htmlspecialchars($row['email'] ?? '') ?></td>
+			  <td><?= htmlspecialchars($row['role'] ?? '') ?></td>
               <td class="text-end">
                 <button
                   class="btn btn-sm btn-outline-primary"
@@ -209,6 +212,14 @@ $rows = $pdo->query(
             <?php endforeach; ?>
           </select>
         </div>
+		<div class="mb-3">
+    <label class="form-label">Role</label>
+    <select class="form-select" id="add_role">
+        <option value="instructor">Instructor</option>
+        <option value="instructor_admin">Instructor Admin</option>
+        <option value="viewer">Viewer</option>
+    </select>
+</div>
         <div class="mb-3">
           <label class="form-label">Email</label>
           <input type="email" class="form-control" id="add_email" />
@@ -278,13 +289,14 @@ function postAccount(params) {
 }
 
 function saveRecord() {
-  postAccount({
+ postAccount({
     action: 'add',
     name: document.getElementById('add_name').value.trim(),
     dept_id: document.getElementById('add_dept_id').value,
+    role: document.getElementById('add_role').value,
     email: document.getElementById('add_email').value.trim(),
     password: document.getElementById('add_password').value,
-  }).then(result => {
+}).then(result => {
     showToast(result.message, result.success ? 'success' : 'danger');
     if (result.success) {
       bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();

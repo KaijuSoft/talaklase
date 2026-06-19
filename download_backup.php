@@ -1,0 +1,20 @@
+<?php
+
+require_once 'includes/auth.php';
+
+require_permission('sync_settings');
+
+$file = basename($_GET['file'] ?? '');
+
+$path = __DIR__ . '/storage/backups/' . $file;
+
+if (!is_file($path)) {
+    die('Backup not found.');
+}
+
+header('Content-Type: application/octet-stream');
+header('Content-Disposition: attachment; filename="' . $file . '"');
+header('Content-Length: ' . filesize($path));
+
+readfile($path);
+exit;

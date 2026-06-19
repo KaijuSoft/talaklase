@@ -34,6 +34,7 @@ function page_permission(string $page): ?string {
         'sections' => 'manage_sections',
         'subjects' => 'manage_subjects',
         'sync' => 'sync_settings',
+		'db_backup' => 'sync_settings',
     ];
 
     return $map[$page] ?? null;
