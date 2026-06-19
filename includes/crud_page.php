@@ -71,8 +71,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 	
-	if ($action === 'archive') {
 
+	if ($action === 'archive') {
+		
+		$user = current_user();
+
+	if ((current_user()['role'] ?? '') !== 'admin') {
+
+    echo json_encode([
+        'success' => false,
+        'message' => 'Only administrators can archive subjects.'
+    ]);
+
+    exit;
+}
     try {
 
         if ($config['table'] !== 'subject') {
@@ -104,8 +116,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 
-if ($action === 'restore') {
 
+
+if ($action === 'restore') {
+	
+	$user = current_user();
+
+if ((current_user()['role'] ?? '') !== 'admin') {
+
+    echo json_encode([
+        'success' => false,
+        'message' => 'Only administrators can restore subjects.'
+    ]);
+
+    exit;
+}
     try {
 
         $pdo->prepare("
@@ -186,7 +211,10 @@ if ($config['table'] === 'subject') {
     <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addModal">
       <i class="bi bi-plus-lg me-1"></i> Add <?= rtrim($config['title'],'s') ?>
     </button>
-	<?php if ($config['table'] === 'subject'): ?>
+	<?php if (
+    $config['table'] === 'subject'
+    && (current_user()['role'] ?? '') === 'admin'
+): ?>
 
 	<a
 		href="?page=subjects<?= $showArchived ? '' : '&show_archived=1' ?>"
@@ -208,7 +236,10 @@ if ($config['table'] === 'subject') {
         <tr>
           <th>#</th>
           <?php foreach ($config['list_cols'] as $col => $label): ?><th><?= $label ?></th><?php endforeach; ?>
-          <?php if ($config['table'] === 'subject'): ?>
+          <?php if (
+					$config['table'] === 'subject'
+				&& (current_user()['role'] ?? '') === 'admin'
+			): ?>
 			<th>Status</th>
 			<?php endif; ?>
 
