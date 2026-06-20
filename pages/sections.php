@@ -456,6 +456,7 @@ $sections = $sectionsStmt->fetchAll();
             <input
 				class="form-check-input edit-subject"
 				type="checkbox"
+				name="subjects[]"
 				value="<?= (int)$subject['sub_id'] ?>">
 
             <label class="form-check-label">
@@ -540,9 +541,10 @@ $sections = $sectionsStmt->fetchAll();
         <div class="form-check">
 
            <input
-    class="form-check-input edit-subject"
-    type="checkbox"
-    value="<?= (int)$subject['sub_id'] ?>">
+			class="form-check-input edit-subject"
+			type="checkbox"
+			name="subjects[]"
+			value="<?= (int)$subject['sub_id'] ?>">
 
             <label class="form-check-label">
 

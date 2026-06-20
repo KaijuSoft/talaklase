@@ -8,7 +8,7 @@ require_login();
 include 'includes/update_banner.php';
 
 $page = $_GET['page'] ?? 'students';
-$allowed = ['students','attendance','view_attendance','print_attendance','grades','score_settings','courses','departments','instructors','instructor_accounts','sections','subjects','sync','db_backup'];
+$allowed = ['students','attendance','view_attendance','print_attendance','grades','score_settings','courses','departments','instructors','instructor_accounts','sections','subjects','sync','db_backup','teaching_loads'];
 if (!in_array($page, $allowed)) $page = 'students';
 
 $permission = page_permission($page);
@@ -29,7 +29,7 @@ $titles = [
   'students'=>'Student Records','attendance'=>'Attendance','view_attendance'=>'View Attendance',
   'print_attendance'=>'Print Attendance','grades'=>'Grading Form','score_settings'=>'Score Settings',
   'courses'=>'Courses','departments'=>'Departments','instructors'=>'Instructors','instructor_accounts'=>'Instructor Accounts',
-  'sections'=>'Sections','subjects'=>'Subjects','sync'=>'Database Sync','db_backup' =>'Database Backup'
+  'sections'=>'Sections','subjects'=>'Subjects','sync'=>'Database Sync','db_backup' =>'Database Backup','teaching_loads' => 'Teaching Loads'
 ];
 $currentTitle = $titles[$page] ?? 'Dashboard';
 $managementPages = ['departments','courses','sections','subjects','instructors','instructor_accounts'];
@@ -127,6 +127,13 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
       <i class="bi bi-grid-fill"></i> Sections
     </a>
     <?php endif; ?>
+	<?php if (can('manage_teaching_loads')): ?>
+	<a href="?page=teaching_loads"
+		class="nav-link <?= $page==='teaching_loads'?'active':'' ?>">
+		<i class="bi bi-person-workspace"></i>
+		Teaching Loads
+	</a>
+	<?php endif; ?>
       <?php if (can('manage_subjects')): ?>
     <a href="?page=subjects" class="nav-link <?= $page==='subjects'?'active':'' ?>">
       <i class="bi bi-file-earmark-text-fill"></i> Subjects

@@ -35,6 +35,7 @@ function page_permission(string $page): ?string {
         'subjects' => 'manage_subjects',
         'sync' => 'sync_settings',
 		'db_backup' => 'sync_settings',
+		'teaching_loads' => 'manage_teaching_loads',
     ];
 
     return $map[$page] ?? null;
@@ -51,6 +52,7 @@ $PERMISSIONS = [
     'manage_instructors','manage_users',
     'sync_settings',    'print_reports',
     'manage_score_settings', 
+	'manage_teaching_loads',
     ],
     'instructor_admin' => [
         'view_students',    'edit_students',
