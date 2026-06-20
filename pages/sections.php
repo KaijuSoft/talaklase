@@ -62,6 +62,29 @@ foreach ($instructors as $instId) {
         $instId
     ]);
 }
+
+			$subjects = $_POST['subjects'] ?? [];
+
+				if (!is_array($subjects)) {
+					$subjects = [$subjects];
+}
+
+			$subjects = array_filter($subjects);
+
+				foreach ($subjects as $subId) {
+
+					$stmt = $pdo->prepare("
+					INSERT INTO section_subjects
+						(sectionID, sub_id)
+						VALUES (?, ?)
+					");
+
+    $stmt->execute([
+        $sectionId,
+        $subId
+    ]);
+}
+			
             echo json_encode(['success' => true, 'message' => 'Section created.']);
         } catch (Throwable $e) {
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -104,11 +127,41 @@ foreach ($instructors as $instId) {
         try {
             $stmt = $pdo->prepare('UPDATE section SET section = ?, course_id = ?, inst_id = ? WHERE sectionID = ?');
             $stmt->execute([$sectionName, $courseId, $ownerInstId, $sectionId]);
-			// Remove old instructor assignments
+			
+// Remove old instructor assignments
 $pdo->prepare(
     "DELETE FROM section_instructors
      WHERE sectionID = ?"
 )->execute([$sectionId]);
+
+// Remove old subject assignments
+$pdo->prepare(
+    "DELETE FROM section_subjects
+     WHERE sectionID = ?"
+)->execute([$sectionId]);
+
+// Add new subject assignments
+$subjects = $_POST['subjects'] ?? [];
+
+if (!is_array($subjects)) {
+    $subjects = [$subjects];
+}
+
+$subjects = array_filter($subjects);
+
+foreach ($subjects as $subId) {
+
+    $stmt = $pdo->prepare(
+        "INSERT INTO section_subjects
+         (sectionID, sub_id)
+         VALUES (?, ?)"
+    );
+
+    $stmt->execute([
+        $sectionId,
+        $subId
+    ]);
+}
 
 // Add new instructor assignments
 $instructors = $_POST['instructors'] ?? [];
@@ -192,6 +245,25 @@ exit;
 
 $courses = $pdo->query('SELECT course_id, course_acronym FROM course ORDER BY course_acronym')->fetchAll();
 $instructors = $pdo->query('SELECT inst_id, inst_name FROM instructor ORDER BY inst_name')->fetchAll();
+$subjects = $pdo->query(
+    'SELECT sub_id, sub_code, sub_name
+     FROM subject
+     WHERE is_active = 1
+     ORDER BY sub_code'
+)->fetchAll();
+
+$sectionSubjects = [];
+
+$stmt = $pdo->query("
+    SELECT sectionID, sub_id
+    FROM section_subjects
+");
+
+foreach ($stmt->fetchAll() as $row) {
+
+    $sectionSubjects[$row['sectionID']][] =
+        (int)$row['sub_id'];
+}
 
 if ($canManageAllSections) {
     $sectionsStmt = $pdo->query(
@@ -309,6 +381,11 @@ $sections = $sectionsStmt->fetchAll();
               <td><?= htmlspecialchars($section['course_acronym'] ?? '') ?></td>
               <td><?= htmlspecialchars($section['inst_name'] ?? 'Unassigned') ?></td>
               <td class="text-end">
+			  <?php
+				$section['subjects'] =
+					$sectionSubjects[$section['sectionID']] ?? [];
+				?>
+				
                 <button class="btn btn-sm btn-outline-primary" onclick='openEdit(<?= htmlspecialchars(json_encode($section), ENT_QUOTES, "UTF-8") ?>)'>
                   <i class="bi bi-pencil-fill me-1"></i>Edit
                 </button>
@@ -368,7 +445,32 @@ $sections = $sectionsStmt->fetchAll();
         </div>
 
     <?php endforeach; ?>
+<div class="mb-3">
 
+    <label class="form-label">Subjects</label>
+
+    <?php foreach ($subjects as $subject): ?>
+
+        <div class="form-check">
+
+            <input
+				class="form-check-input edit-subject"
+				type="checkbox"
+				value="<?= (int)$subject['sub_id'] ?>">
+
+            <label class="form-check-label">
+
+                <?= htmlspecialchars(
+                    $subject['sub_code'] . ' - ' . $subject['sub_name']
+                ) ?>
+
+            </label>
+
+        </div>
+
+    <?php endforeach; ?>
+
+</div>
 </div>
 
         </div>
@@ -428,6 +530,36 @@ $sections = $sectionsStmt->fetchAll();
     <?php endforeach; ?>
 
 </div>
+
+			<div class="mb-3">
+
+    <label class="form-label">Subjects</label>
+
+    <?php foreach ($subjects as $subject): ?>
+
+        <div class="form-check">
+
+           <input
+    class="form-check-input edit-subject"
+    type="checkbox"
+    value="<?= (int)$subject['sub_id'] ?>">
+
+            <label class="form-check-label">
+
+                <?= htmlspecialchars(
+                    $subject['sub_code']
+                    . ' - '
+                    . $subject['sub_name']
+                ) ?>
+
+            </label>
+
+        </div>
+
+    <?php endforeach; ?>
+
+</div>
+		
         </div>
         <?php endif; ?>
       </div>
@@ -465,6 +597,12 @@ function saveRecord() {
     .forEach(cb => {
         params.append('instructors[]', cb.value);
     });
+	
+	document
+  .querySelectorAll('input[name="subjects[]"]:checked')
+  .forEach(cb => {
+      params.append('subjects[]', cb.value);
+  });
 
   params.append('csrf_token', csrfToken);
 
@@ -502,6 +640,9 @@ function openEdit(row) {
 
     document.querySelectorAll('.edit-instructor')
         .forEach(cb => cb.checked = false);
+		
+		document.querySelectorAll('.edit-subject')
+    .forEach(cb => cb.checked = false);
 
     if (row.instructors) {
 
@@ -519,6 +660,23 @@ function openEdit(row) {
         });
 
     }
+	
+	if (row.subjects) {
+
+    row.subjects.forEach(id => {
+
+        document.querySelectorAll('.edit-subject')
+            .forEach(cb => {
+
+                if (cb.value == id) {
+                    cb.checked = true;
+                }
+
+            });
+
+    });
+
+}
 
     new bootstrap.Modal(
         document.getElementById('editModal')
@@ -546,6 +704,12 @@ function updateRecord() {
         params.append('instructors[]', cb.value);
     });
 
+document
+  .querySelectorAll('.edit-subject:checked')
+  .forEach(cb => {
+      params.append('subjects[]', cb.value);
+  });
+  
   params.append('csrf_token', csrfToken);
 
   fetch('', {
