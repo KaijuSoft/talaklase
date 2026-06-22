@@ -460,7 +460,7 @@ $sections = $sectionsStmt->fetchAll();
         <div class="form-check">
 
             <input
-				class="form-check-input edit-subject"
+				class="form-check-input add-subject"
 				type="checkbox"
 				name="subjects[]"
 				value="<?= (int)$subject['sub_id'] ?>">
@@ -607,10 +607,13 @@ function saveRecord() {
     });
 	
 	document
-  .querySelectorAll('#editModal input[name="subjects[]"]:checked')
+  .querySelectorAll('#addModal input[name="subjects[]"]:checked')
   .forEach(cb => {
       params.append('subjects[]', cb.value);
   });
+
+
+
 
   params.append('csrf_token', csrfToken);
 
@@ -718,7 +721,7 @@ document
   .forEach(cb => {
       params.append('subjects[]', cb.value);
   });
-  
+   
   params.append('csrf_token', csrfToken);
 
   fetch('', {
