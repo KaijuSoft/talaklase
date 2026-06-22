@@ -88,16 +88,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // ── Save attendance (INSERT) ───────────────────────────────────────────────
     if ($action === 'save') {
-        $records = json_decode($_POST['records'], true);
-        $date    = $_POST['date'];
-        $term    = $_POST['term'];
+$records = json_decode($_POST['records'], true);
+$date    = $_POST['date'];
+$term    = $_POST['term'];
+$ayId = current_ay_id($pdo);
+$timeIn = date('Y-m-d H:i:s');
         try {
             $pdo->beginTransaction();
-            $ins = $pdo->prepare("INSERT INTO attendance (st_id,sectionID,_date,status,term) VALUES (?,?,?,?,?)");
+            $ins = $pdo->prepare("INSERT INTO attendance (st_id,sectionID,_date,status,term,ay_id,time_in) VALUES (?,?,?,?,?,?,?)");
             foreach ($records as $r) {
-                $ins->execute([$r['st_id'], $r['sectionID'], $date, $r['status'], $term]);
+                $ins->execute([$r['st_id'], $r['sectionID'], $date, $r['status'], $term, $ayId, $timeIn]);
             }
             $pdo->commit();
+
+
             echo json_encode(['success'=>true,'message'=>'Attendance saved successfully!']);
         } catch (Exception $e) {
             $pdo->rollBack();

@@ -6,6 +6,7 @@ require_once 'includes/auth.php';
 authBootstrap();
 require_login();
 include 'includes/update_banner.php';
+date_default_timezone_set('Asia/Manila');
 
 $page = $_GET['page'] ?? 'students';
 $allowed = ['students','attendance','view_attendance','print_attendance','grades','score_settings','courses','departments','instructors','instructor_accounts','sections','subjects','sync','db_backup','teaching_loads','academic_years'];
