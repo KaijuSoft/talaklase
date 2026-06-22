@@ -68,8 +68,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_POST['course_id']
             ]);
             $stId = $pdo->lastInsertId();
-            $sec = $pdo->prepare("INSERT INTO student_section (st_id,sectionID,yearlvl) VALUES (?,?,?)");
-            $sec->execute([$stId, $_POST['section_id'], $_POST['year_level']]);
+			$ayId = current_ay_id($pdo);
+
+            $sec = $pdo->prepare("INSERT INTO student_section (st_id,sectionID,yearlvl,ay_id) VALUES (?,?,?,?)");
+            $sec->execute([$stId, $_POST['section_id'], $_POST['year_level'], $ayId]);
             $pdo->commit();
             echo json_encode(['success'=>true,'message'=>'Student added successfully.']);
         } catch (Exception $e) {

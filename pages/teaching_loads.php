@@ -32,6 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sectionID = (int)($_POST['sectionID'] ?? 0);
         $sub_id    = (int)($_POST['sub_id'] ?? 0);
         $inst_id   = (int)($_POST['inst_id'] ?? 0);
+		$ayId = current_ay_id($pdo);
 
         try {
 
@@ -40,18 +41,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 (
                     sectionID,
                     sub_id,
-                    inst_id
+                    inst_id,
+					ay_Id
                 )
                 VALUES
                 (
-                    ?, ?, ?
+                    ?, ?, ?, ?
                 )
             ");
 
             $stmt->execute([
                 $sectionID,
                 $sub_id,
-                $inst_id
+                $inst_id,
+				$ayId
             ]);
 
             echo json_encode([

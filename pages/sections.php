@@ -40,8 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         try {
-            $stmt = $pdo->prepare('INSERT INTO section (section, course_id, inst_id) VALUES (?, ?, ?)');
-            $stmt->execute([$sectionName, $courseId, $ownerInstId]);
+			$ayId = current_ay_id($pdo);
+            $stmt = $pdo->prepare('INSERT INTO section (section, course_id, inst_id, ay_id) VALUES (?, ?, ?, ?)');
+            $stmt->execute([$sectionName, $courseId, $ownerInstId, $ayId]);
 			$sectionId = $pdo->lastInsertId();
 
 $instructors = $_POST['instructors'] ?? [];

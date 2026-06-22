@@ -8,7 +8,7 @@ require_login();
 include 'includes/update_banner.php';
 
 $page = $_GET['page'] ?? 'students';
-$allowed = ['students','attendance','view_attendance','print_attendance','grades','score_settings','courses','departments','instructors','instructor_accounts','sections','subjects','sync','db_backup','teaching_loads'];
+$allowed = ['students','attendance','view_attendance','print_attendance','grades','score_settings','courses','departments','instructors','instructor_accounts','sections','subjects','sync','db_backup','teaching_loads','academic_years'];
 if (!in_array($page, $allowed)) $page = 'students';
 
 $permission = page_permission($page);
@@ -29,7 +29,7 @@ $titles = [
   'students'=>'Student Records','attendance'=>'Attendance','view_attendance'=>'View Attendance',
   'print_attendance'=>'Print Attendance','grades'=>'Grading Form','score_settings'=>'Score Settings',
   'courses'=>'Courses','departments'=>'Departments','instructors'=>'Instructors','instructor_accounts'=>'Instructor Accounts',
-  'sections'=>'Sections','subjects'=>'Subjects','sync'=>'Database Sync','db_backup' =>'Database Backup','teaching_loads' => 'Teaching Loads'
+  'sections'=>'Sections','subjects'=>'Subjects','sync'=>'Database Sync','db_backup' =>'Database Backup','teaching_loads' => 'Teaching Loads','academic_years' => 'Academic Years'
 ];
 $currentTitle = $titles[$page] ?? 'Dashboard';
 $managementPages = ['departments','courses','sections','subjects','instructors','instructor_accounts'];
@@ -134,6 +134,14 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
 		Teaching Loads
 	</a>
 	<?php endif; ?>
+	<?php if (can('manage_academic_years')): ?>
+	<a href="?page=academic_years"
+	class="nav-link <?= $page==='academic_years'?'active':'' ?>">
+    <i class="bi bi-calendar-range"></i>
+    Academic Years
+	</a>
+	<?php endif; ?>
+	
       <?php if (can('manage_subjects')): ?>
     <a href="?page=subjects" class="nav-link <?= $page==='subjects'?'active':'' ?>">
       <i class="bi bi-file-earmark-text-fill"></i> Subjects

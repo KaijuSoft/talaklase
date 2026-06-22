@@ -5,6 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/academic_year.php';
 
 const DEFAULT_ADMIN_USERNAME = 'Admin';
 const DEFAULT_ADMIN_PASSWORD = 'Admin@2026';
@@ -36,6 +37,7 @@ function page_permission(string $page): ?string {
         'sync' => 'sync_settings',
 		'db_backup' => 'sync_settings',
 		'teaching_loads' => 'manage_teaching_loads',
+		'academic_years' => 'manage_academic_years'
     ];
 
     return $map[$page] ?? null;
@@ -52,7 +54,7 @@ $PERMISSIONS = [
     'manage_instructors','manage_users',
     'sync_settings',    'print_reports',
     'manage_score_settings', 
-	'manage_teaching_loads',
+	'manage_teaching_loads', 'manage_academic_years'
     ],
     'instructor_admin' => [
         'view_students',    'edit_students',
