@@ -69,11 +69,109 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         exit;
     }
+	
+	if ($action === 'update') {
+
+    $assignment_id =
+        (int)($_POST['assignment_id'] ?? 0);
+
+    $sectionID =
+        (int)($_POST['sectionID'] ?? 0);
+
+    $sub_id =
+        (int)($_POST['sub_id'] ?? 0);
+
+    $inst_id =
+        (int)($_POST['inst_id'] ?? 0);
+
+    try {
+
+        $stmt = $pdo->prepare("
+            UPDATE teaching_assignments
+            SET
+                sectionID = ?,
+                sub_id    = ?,
+                inst_id   = ?
+            WHERE assignment_id = ?
+        ");
+
+        $stmt->execute([
+            $sectionID,
+            $sub_id,
+            $inst_id,
+            $assignment_id
+        ]);
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Teaching load updated.'
+        ]);
+
+    } catch (Throwable $e) {
+
+        echo json_encode([
+            'success' => false,
+            'message' => $e->getMessage()
+        ]);
+    }
+
+    exit;
+}
+	
+	if ($action === 'get_subjects') {
+
+    $sectionID = (int)($_POST['sectionID'] ?? 0);
+
+    $stmt = $pdo->prepare("
+        SELECT
+            s.sub_id,
+            s.sub_code,
+            s.sub_name
+        FROM section_subjects ss
+        JOIN subject s
+            ON s.sub_id = ss.sub_id
+        WHERE ss.sectionID = ?
+          AND s.is_active = 1
+        ORDER BY s.sub_code
+    ");
+
+    $stmt->execute([$sectionID]);
+
+    echo json_encode(
+        $stmt->fetchAll(PDO::FETCH_ASSOC)
+    );
+
+    exit;
+}
+
+	if ($action === 'get_instructors') {
+
+    $sectionID = (int)($_POST['sectionID'] ?? 0);
+
+    $stmt = $pdo->prepare("
+        SELECT
+            i.inst_id,
+            i.inst_name
+        FROM section_instructors si
+        JOIN instructor i
+            ON i.inst_id = si.inst_id
+        WHERE si.sectionID = ?
+        ORDER BY i.inst_name
+    ");
+
+    $stmt->execute([$sectionID]);
+
+    echo json_encode(
+        $stmt->fetchAll(PDO::FETCH_ASSOC)
+    );
+
+    exit;
+}
 
 }
 
-$loads = $pdo->query("
-    SELECT
+		$loads = $pdo->query("
+		SELECT
         ta.assignment_id,
         ta.sectionID,
         ta.sub_id,
@@ -101,26 +199,26 @@ $loads = $pdo->query("
     ORDER BY
         s.section,
         sub.sub_code
-")->fetchAll();
+	")->fetchAll();
 
-$sections = $pdo->query("
+	$sections = $pdo->query("
     SELECT sectionID, section
     FROM section
     ORDER BY section
-")->fetchAll();
+	")->fetchAll();
 
-$subjects = $pdo->query("
+	$subjects = $pdo->query("
     SELECT sub_id, sub_code, sub_name
     FROM subject
     WHERE is_active = 1
     ORDER BY sub_code
-")->fetchAll();
+	")->fetchAll();
 
-$instructors = $pdo->query("
+	$instructors = $pdo->query("
     SELECT inst_id, inst_name
     FROM instructor
     ORDER BY inst_name
-")->fetchAll();
+		")->fetchAll();
 
 
 
@@ -172,6 +270,7 @@ const csrfToken =
                     <th>Subject</th>
                     <th>Instructor</th>
                     <th>Status</th>
+					<th>Actions</th>
 
                 </tr>
 
@@ -208,6 +307,23 @@ const csrfToken =
                         ?>
 
                     </td>
+					
+					<td>
+
+					<button
+						class="btn btn-sm btn-warning"
+							onclick="editLoad(
+					<?= (int)$load['assignment_id'] ?>,
+				<?= (int)$load['sectionID'] ?>,
+			<?= (int)$load['sub_id'] ?>,
+        <?= (int)$load['inst_id'] ?>
+    )">
+
+    Edit
+
+</button>
+
+</td>
 
                 </tr>
 
@@ -246,9 +362,10 @@ const csrfToken =
             Section
         </label>
 
-        <select
-            class="form-select"
-            id="add_sectionID">
+			<select
+				class="form-select"
+				id="add_sectionID"
+				onchange="loadSectionData()">
 
             <?php foreach ($sections as $section): ?>
 
@@ -349,7 +466,333 @@ const csrfToken =
 </div>
 </div>
 
+<div class="modal fade" id="editModal" tabindex="-1">
+
+<div class="modal-dialog modal-dialog-centered">
+
+<div class="modal-content">
+
+<div class="modal-header">
+
+    <h5 class="modal-title">
+        Edit Teaching Load
+    </h5>
+
+    <button
+        class="btn-close"
+        data-bs-dismiss="modal">
+    </button>
+
+</div>
+
+<div class="modal-body">
+
+    <input
+        type="hidden"
+        id="edit_assignment_id">
+
+    <div class="mb-3">
+
+        <label class="form-label">
+            Section
+        </label>
+
+        <select
+            class="form-select"
+            id="edit_sectionID">
+
+            <?php foreach ($sections as $section): ?>
+
+                <option
+                    value="<?= (int)$section['sectionID'] ?>">
+
+                    <?= htmlspecialchars(
+                        $section['section']
+                    ) ?>
+
+                </option>
+
+            <?php endforeach; ?>
+
+        </select>
+
+    </div>
+
+    <div class="mb-3">
+
+        <label class="form-label">
+            Subject
+        </label>
+
+        <select
+            class="form-select"
+            id="edit_sub_id">
+        </select>
+
+    </div>
+
+    <div class="mb-3">
+
+        <label class="form-label">
+            Instructor
+        </label>
+
+        <select
+            class="form-select"
+            id="edit_inst_id">
+        </select>
+
+    </div>
+
+</div>
+
+<div class="modal-footer">
+
+    <button
+        class="btn btn-secondary"
+        data-bs-dismiss="modal">
+
+        Cancel
+
+    </button>
+
+    <button
+        class="btn btn-primary"
+        onclick="updateLoad()">
+
+        Save Changes
+
+    </button>
+
+</div>
+
+</div>
+</div>
+</div>
+
 <script>
+
+
+function loadSectionData() {
+
+    const sectionID =
+        document.getElementById(
+            'add_sectionID'
+        ).value;
+
+    loadSubjects(sectionID);
+
+    loadInstructors(sectionID);
+}
+
+function loadSubjects(sectionID) {
+
+    const params = new URLSearchParams();
+
+    params.append('action', 'get_subjects');
+    params.append('sectionID', sectionID);
+    params.append('csrf_token', csrfToken);
+
+    fetch(window.location.href, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: params
+    })
+    .then(r => r.json())
+    .then(subjects => {
+
+        console.log('SUBJECTS', subjects);
+
+        const select =
+            document.getElementById('add_sub_id');
+
+        select.innerHTML = '';
+		
+		if (subjects.length === 0) {
+
+    const option =
+        document.createElement('option');
+
+    option.textContent =
+        'No subjects assigned to this section';
+
+    option.disabled = true;
+    option.selected = true;
+
+    select.appendChild(option);
+
+    return;
+}
+
+        subjects.forEach(subject => {
+
+            const option =
+                document.createElement('option');
+
+            option.value = subject.sub_id;
+
+            option.textContent =
+                subject.sub_code +
+                ' - ' +
+                subject.sub_name;
+
+            select.appendChild(option);
+
+        });
+
+    });
+
+}
+
+function loadInstructors(sectionID) {
+
+    const params =
+        new URLSearchParams();
+
+    params.append(
+        'action',
+        'get_instructors'
+    );
+
+    params.append(
+        'sectionID',
+        sectionID
+    );
+
+    params.append(
+        'csrf_token',
+        csrfToken
+    );
+
+    fetch(window.location.href, {
+        method: 'POST',
+        headers: {
+            'Content-Type':
+            'application/x-www-form-urlencoded'
+        },
+        body: params
+    })
+    .then(r => r.json())
+    .then(instructors => {
+
+        const select =
+            document.getElementById(
+                'add_inst_id'
+            );
+
+        select.innerHTML = '';
+		
+		if (instructors.length === 0) {
+
+    const option =
+        document.createElement('option');
+
+    option.textContent =
+        'No instructors assigned to this section';
+
+    option.disabled = true;
+    option.selected = true;
+
+    select.appendChild(option);
+
+    return;
+}
+
+        instructors.forEach(instructor => {
+
+            const option =
+                document.createElement('option');
+
+            option.value =
+                instructor.inst_id;
+
+            option.textContent =
+                instructor.inst_name;
+
+            select.appendChild(option);
+
+        });
+
+    });
+
+}
+
+
+function loadEditSubjects(
+    sectionID,
+    selectedSubId
+) {
+
+    const params =
+        new URLSearchParams();
+
+    params.append(
+        'action',
+        'get_subjects'
+    );
+
+    params.append(
+        'sectionID',
+        sectionID
+    );
+
+    params.append(
+        'csrf_token',
+        csrfToken
+    );
+
+    fetch(window.location.href, {
+        method: 'POST',
+        headers: {
+            'Content-Type':
+                'application/x-www-form-urlencoded'
+        },
+        body: params
+    })
+    .then(r => r.json())
+    .then(subjects => {
+
+        const select =
+            document.getElementById(
+                'edit_sub_id'
+            );
+
+        select.innerHTML = '';
+
+        subjects.forEach(subject => {
+
+            const option =
+                document.createElement(
+                    'option'
+                );
+
+            option.value =
+                subject.sub_id;
+
+            option.textContent =
+                subject.sub_code +
+                ' - ' +
+                subject.sub_name;
+
+            if (
+                parseInt(subject.sub_id)
+                ===
+                parseInt(selectedSubId)
+            ) {
+                option.selected = true;
+            }
+
+            select.appendChild(
+                option
+            );
+
+        });
+
+    });
+
+}
 
 function saveLoad() {
 
@@ -387,7 +830,7 @@ function saveLoad() {
         csrfToken
     );
 
-    fetch('', {
+    fetch(window.location.href, {
         method: 'POST',
         headers: {
             'Content-Type':
@@ -410,4 +853,207 @@ function saveLoad() {
 
 }
 
+function updateLoad() {
+
+    const params =
+        new URLSearchParams();
+
+    params.append(
+        'action',
+        'update'
+    );
+
+    params.append(
+        'assignment_id',
+        document.getElementById(
+            'edit_assignment_id'
+        ).value
+    );
+
+    params.append(
+        'sectionID',
+        document.getElementById(
+            'edit_sectionID'
+        ).value
+    );
+
+    params.append(
+        'sub_id',
+        document.getElementById(
+            'edit_sub_id'
+        ).value
+    );
+
+    params.append(
+        'inst_id',
+        document.getElementById(
+            'edit_inst_id'
+        ).value
+    );
+
+    params.append(
+        'csrf_token',
+        csrfToken
+    );
+
+    fetch(window.location.href, {
+        method: 'POST',
+        headers: {
+            'Content-Type':
+                'application/x-www-form-urlencoded'
+        },
+        body: params
+    })
+    .then(r => r.json())
+    .then(result => {
+
+        alert(result.message);
+
+        if (result.success) {
+
+            location.reload();
+
+        }
+
+    });
+
+}
+
+document.addEventListener(
+    'DOMContentLoaded',
+    () => {
+
+        loadSectionData();
+
+    }
+	
+);
+
+	document
+    .getElementById('addModal')
+    .addEventListener(
+        'shown.bs.modal',
+        function () {
+
+            loadSectionData();
+
+        }
+    );
+	
+	
+function loadEditInstructors(
+    sectionID,
+    selectedInstId
+) {
+
+    const params =
+        new URLSearchParams();
+
+    params.append(
+        'action',
+        'get_instructors'
+    );
+
+    params.append(
+        'sectionID',
+        sectionID
+    );
+
+    params.append(
+        'csrf_token',
+        csrfToken
+    );
+
+    fetch(window.location.href, {
+        method: 'POST',
+        headers: {
+            'Content-Type':
+                'application/x-www-form-urlencoded'
+        },
+        body: params
+    })
+    .then(r => r.json())
+    .then(instructors => {
+
+        const select =
+            document.getElementById(
+                'edit_inst_id'
+            );
+
+        select.innerHTML = '';
+
+        instructors.forEach(
+            instructor => {
+
+            const option =
+                document.createElement(
+                    'option'
+                );
+
+            option.value =
+                instructor.inst_id;
+
+            option.textContent =
+                instructor.inst_name;
+
+            if (
+                parseInt(
+                    instructor.inst_id
+                )
+                ===
+                parseInt(
+                    selectedInstId
+                )
+            ) {
+                option.selected = true;
+            }
+
+            select.appendChild(
+                option
+            );
+
+        });
+
+    });
+
+}
+	
+function editLoad(
+    assignmentId,
+    sectionId,
+    subId,
+    instId
+) {
+
+    document.getElementById(
+        'edit_assignment_id'
+    ).value = assignmentId;
+
+    document.getElementById(
+        'edit_sectionID'
+    ).value = sectionId;
+	
+	loadEditSubjects(
+    sectionId,
+    subId
+);
+
+	loadEditInstructors(
+    sectionId,
+    instId
+);
+
+    const modal =
+        new bootstrap.Modal(
+            document.getElementById(
+                'editModal'
+            )
+        );
+
+    modal.show();
+
+}
+
+
+	
 </script>

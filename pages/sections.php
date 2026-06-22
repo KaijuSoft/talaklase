@@ -70,6 +70,9 @@ foreach ($instructors as $instId) {
 }
 
 			$subjects = array_filter($subjects);
+			$subjects = array_unique($subjects);
+			
+
 
 				foreach ($subjects as $subId) {
 
@@ -148,6 +151,9 @@ if (!is_array($subjects)) {
 }
 
 $subjects = array_filter($subjects);
+$subjects = array_unique($subjects);
+
+
 
 foreach ($subjects as $subId) {
 
@@ -595,13 +601,13 @@ function saveRecord() {
   params.append('course_id', document.getElementById('add_course_id').value);
 
   document
-    .querySelectorAll('input[name="add_instructors[]"]:checked')
+    .querySelectorAll('#addModal input[name="add_instructors[]"]:checked')
     .forEach(cb => {
         params.append('instructors[]', cb.value);
     });
 	
 	document
-  .querySelectorAll('input[name="subjects[]"]:checked')
+  .querySelectorAll('#editModal input[name="subjects[]"]:checked')
   .forEach(cb => {
       params.append('subjects[]', cb.value);
   });
@@ -616,6 +622,7 @@ function saveRecord() {
       body: params
   })
   .then(r => r.json())
+
   .then(result => {
       showToast(result.message, result.success ? 'success' : 'danger');
 
