@@ -355,8 +355,7 @@ LIMIT :limit OFFSET :offset");
     </td>
 		</tr>
             <tr>
-              <td colspan="9" class="text-center text-muted py-4">
-                <i class="bi bi-inbox me-2"></i>No records found.
+              
               </td>
             </tr>
           <?php else: foreach ($records as $i => $r): ?>
@@ -406,12 +405,12 @@ LIMIT :limit OFFSET :offset");
       <nav>
         <ul class="pagination pagination-sm mb-0">
           <li class="page-item <?= $page<=1?'disabled':'' ?>">
-            <a class="page-link" href="?page=view_attendance&p=<?= $page-1 ?>&sec=<?= urlencode($filter_sec) ?>&term=<?= urlencode($filter_term) ?>&date_from=<?= urlencode($filter_from) ?>&date_to=<?= urlencode($filter_to) ?>&name=<?= urlencode($filter_name) ?>">
+            <a class="page-link" href="?page=view_attendance_v2&p=<?= $page-1 ?>&assignment_id=<?= urlencode($filter_assignment) ?>&term=<?= urlencode($filter_term) ?>&date_from=<?= urlencode($filter_from) ?>&date_to=<?= urlencode($filter_to) ?>&name=<?= urlencode($filter_name) ?>">
               <i class="bi bi-chevron-left"></i>
             </a>
           </li>
           <li class="page-item <?= $page>=$totalPages?'disabled':'' ?>">
-            <a class="page-link" href="?page=view_attendance&p=<?= $page+1 ?>&sec=<?= urlencode($filter_sec) ?>&term=<?= urlencode($filter_term) ?>&date_from=<?= urlencode($filter_from) ?>&date_to=<?= urlencode($filter_to) ?>&name=<?= urlencode($filter_name) ?>">
+            <a class="page-link" href="?page=view_attendance_v2&p=<?= $page+1 ?>&assignment_id=<?= urlencode($filter_assignment) ?>&term=<?= urlencode($filter_term) ?>&date_from=<?= urlencode($filter_from) ?>&date_to=<?= urlencode($filter_to) ?>&name=<?= urlencode($filter_name) ?>">
               <i class="bi bi-chevron-right"></i>
             </a>
           </li>
