@@ -189,6 +189,44 @@ if ($action === 'load_students_by_assignment') {
 
     exit;
 }
+
+if ($action === 'load_existing') {
+
+    $assignmentId = (int)$_POST['assignment_id'];
+    $date         = $_POST['date'];
+    $term         = $_POST['term'];
+
+    $stmt = $pdo->prepare("
+        SELECT
+            attendance.Att_ID,
+            attendance.st_id,
+            attendance.status,
+			attendance.assignment_id,
+            student.st_lastname,
+            student.st_name,
+            student.st_middlename,
+            student.st_suffix
+        FROM attendance
+        INNER JOIN student
+            ON student.st_id = attendance.st_id
+        WHERE attendance.assignment_id = ?
+        AND attendance._date = ?
+        AND attendance.term = ?
+        ORDER BY student.st_lastname
+    ");
+
+    $stmt->execute([
+        $assignmentId,
+        $date,
+        $term
+    ]);
+
+    echo json_encode(
+        $stmt->fetchAll(PDO::FETCH_ASSOC)
+    );
+
+    exit;
+}
     // ── Save attendance (INSERT) ───────────────────────────────────────────────
     if ($action === 'save') {
 $records = json_decode($_POST['records'], true);
@@ -236,23 +274,48 @@ $timeIn = date('Y-m-d H:i:s');
     }
 
     // ── Update attendance (Editattendance) ────────────────────────────────────
-    if ($action === 'update') {
-        $records = json_decode($_POST['records'], true);
-        $date    = $_POST['date'];
-        try {
-            $pdo->beginTransaction();
-            $upd = $pdo->prepare("UPDATE attendance SET status=? WHERE st_id=? AND sectionID=? AND _date=?");
-            foreach ($records as $r) {
-                $upd->execute([$r['status'], $r['st_id'], $r['sectionID'], $date]);
-            }
-            $pdo->commit();
-            echo json_encode(['success'=>true,'message'=>'Attendance updated successfully!']);
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            echo json_encode(['success'=>false,'message'=>'Error updating attendance: '.$e->getMessage()]);
+   if ($action === 'update') {
+    $records = json_decode($_POST['records'], true);
+    $date = $_POST['date'] ?? '';
+    $term = $_POST['term'] ?? '';
+
+    try {
+        $pdo->beginTransaction();
+
+        $upd = $pdo->prepare("
+            UPDATE attendance
+            SET status = ?
+            WHERE st_id = ?
+              AND assignment_id = ?
+              AND _date = ?
+              AND term = ?
+        ");
+
+        foreach ($records as $r) {
+            $upd->execute([
+                $r['status'],
+                $r['st_id'],
+                $r['assignment_id'],
+                $date,
+                $term
+            ]);
         }
-        exit;
-    }
+
+        $pdo->commit();
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Attendance updated successfully!'
+        ]);
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        echo json_encode([
+            'success' => false,
+            'message' => 'Error updating attendance: ' . $e->getMessage()
+        ]);
+	 }
+			exit;
+  }
 }
 ?>
 
@@ -400,37 +463,87 @@ function loadTeachingLoads() {
 
 function loadStudentsByAssignment() {
 
-    const assignmentId =
-        document.getElementById(
-            'assignment_id'
-        ).value;
+    const assignmentId = document.getElementById('assignment_id').value;
+    const date         = document.getElementById('att_date').value;
+    const term         = document.getElementById('att_term').value;
+
     if (!assignmentId) {
-        showToast(
-            'Select a teaching load.',
-            'warning'
-        );
+        showToast('Select a teaching load.', 'warning');
         return;
     }
+
+    // Step 1 — load the student roster for this assignment
     fetch('', {
         method: 'POST',
-        headers: {
-            'Content-Type':
-                'application/x-www-form-urlencoded'
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
-            action:
-                'load_students_by_assignment',
-            assignment_id:
-                assignmentId
+            action: 'load_students_by_assignment',
+            assignment_id: assignmentId
+        })
+    })
+    .then(r => r.json())
+    .then(students => {
+
+        if (!date || !term) {
+            renderGrid(students, false);
+            return;
+        }
+
+        // Step 2 — check if attendance already exists for this load + date + term
+        fetch('', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                action: 'load_existing',
+                assignment_id: assignmentId,
+                date: date,
+                term: term
+            })
+        })
+        .then(r => r.json())
+        .then(existing => {
+
+            if (existing.length > 0) {
+                // Merge saved statuses into the roster so the grid pre-fills correctly
+                const statusMap = {};
+                existing.forEach(e => { statusMap[e.st_id] = e.status; });
+                students.forEach(s => { s.status = statusMap[s.ID] || 'Absent'; });
+
+                renderGrid(students, true);
+                showToast('Existing attendance found. Update mode enabled.', 'info');
+
+            } else {
+                renderGrid(students, false);
+            }
+        });
+    });
+}
+
+function checkExistingAttendance() {
+
+    const assignmentId = document.getElementById('assignment_id').value;
+    const date         = document.getElementById('att_date').value;
+    const term         = document.getElementById('att_term').value;
+
+    if (!assignmentId || !date || !term) return;
+
+    fetch('', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            action: 'load_existing',
+            assignment_id: assignmentId,
+            date: date,
+            term: term
         })
     })
     .then(r => r.json())
     .then(data => {
-        renderGrid(
-            data,
-            false
-        );
+        if (data.length > 0) {
+            showToast('Attendance already recorded for this selection. Click Load Students to update.', 'info');
+        }
     });
+
 }
 
 function searchStudents() {
@@ -548,7 +661,7 @@ function saveAttendance() {
   });
 }
 
-function editMode() {
+/* function editMode() {
   const q    = document.getElementById('att_search').value.trim();
   const term = document.getElementById('att_term').value;
   const date = document.getElementById('att_date').value;
@@ -557,16 +670,44 @@ function editMode() {
     body: new URLSearchParams({action:'load_edit', q, term, date})})
   .then(r=>r.json()).then(data => renderGrid(data, true));
 }
-
+ */
 function updateAttendance() {
-  const date = document.getElementById('att_date').value;
-  fetch('', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body: new URLSearchParams({action:'update', date, records:JSON.stringify(getRecords())})})
-  .then(r=>r.json()).then(res => {
-    showToast(res.message, res.success?'success':'danger');
-    if (res.success) resetPage();
+
+  const date =
+      document.getElementById('att_date').value;
+
+  const term =
+      document.getElementById('att_term').value;
+
+  fetch('', {
+      method:'POST',
+      headers:{
+          'Content-Type':
+              'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+          action:'update',
+          date,
+          term,
+          records:JSON.stringify(
+              getRecords()
+          )
+      })
+  })
+  .then(r=>r.json())
+  .then(res => {
+      showToast(
+          res.message,
+          res.success
+              ? 'success'
+              : 'danger'
+      );
+
+      if (res.success)
+          resetPage();
   });
 }
+
 
 function resetPage() {
 
@@ -588,4 +729,25 @@ function resetPage() {
   attStudents = [];
   renderGrid([], false);
 }
+
+document
+.getElementById('assignment_id')
+.addEventListener(
+    'change',
+    checkExistingAttendance
+);
+
+document
+.getElementById('att_date')
+.addEventListener(
+    'change',
+    checkExistingAttendance
+);
+
+document
+.getElementById('att_term')
+.addEventListener(
+    'change',
+    checkExistingAttendance
+);
 </script>

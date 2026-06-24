@@ -25,7 +25,7 @@ function page_permission(string $page): ?string {
         'students' => 'view_students',
         'attendance_v2' => 'edit_attendance',
         'view_attendance_v2' => 'view_attendance',
-        'print_attendance' => 'view_attendance',
+        'print_attendance_v2' => 'view_attendance',
         'grades' => 'view_grades',
         'score_settings' => 'manage_score_settings',
         'courses' => 'manage_courses',

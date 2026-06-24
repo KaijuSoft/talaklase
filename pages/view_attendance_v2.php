@@ -188,7 +188,7 @@ LIMIT :limit OFFSET :offset");
     <h6 class="mb-0"><i class="bi bi-eye-fill me-2 text-primary"></i>View Attendance</h6>
   <button
     class="btn btn-sm btn-outline-secondary"
-    onclick="window.open('print.php?type=view_attendance&assignment_id=<?= urlencode($filter_assignment) ?>&term=<?= urlencode($filter_term) ?>&date_from=<?= urlencode($filter_from) ?>&date_to=<?= urlencode($filter_to) ?>&name=<?= urlencode($filter_name) ?>','_blank')">
+    onclick="window.open('index.php?page=print_attendance_v2&assignment_id=<?= urlencode($filter_assignment) ?>&term=<?= urlencode($filter_term) ?>&name=<?= urlencode($filter_name) ?>','_blank')"
     <i class="bi bi-printer-fill me-1"></i> Print
 	</button>
   </div>
