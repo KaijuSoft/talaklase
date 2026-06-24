@@ -9,7 +9,7 @@ include 'includes/update_banner.php';
 date_default_timezone_set('Asia/Manila');
 
 $page = $_GET['page'] ?? 'students';
-$allowed = ['students','attendance','view_attendance','print_attendance','grades','score_settings','courses','departments','instructors','instructor_accounts','sections','subjects','sync','db_backup','teaching_loads','academic_years'];
+$allowed = ['students','attendance_v2','view_attendance_v2','print_attendance','grades','score_settings','courses','departments','instructors','instructor_accounts','sections','subjects','sync','db_backup','teaching_loads','academic_years'];
 if (!in_array($page, $allowed)) $page = 'students';
 
 $permission = page_permission($page);
@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $titles = [
-  'students'=>'Student Records','attendance'=>'Attendance','view_attendance'=>'View Attendance',
+  'students'=>'Student Records','attendance_v2'=>'Attendance','view_attendance_v2'=>'View Attendance',
   'print_attendance'=>'Print Attendance','grades'=>'Grading Form','score_settings'=>'Score Settings',
   'courses'=>'Courses','departments'=>'Departments','instructors'=>'Instructors','instructor_accounts'=>'Instructor Accounts',
   'sections'=>'Sections','subjects'=>'Subjects','sync'=>'Database Sync','db_backup' =>'Database Backup','teaching_loads' => 'Teaching Loads','academic_years' => 'Academic Years'
@@ -82,12 +82,12 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
       </a>
       <?php endif; ?>
      <?php if (can('edit_attendance')): ?>
-	<a href="?page=attendance" class="nav-link <?= $page==='attendance'?'active':'' ?>">
+	<a href="?page=attendance_v2" class="nav-link <?= $page==='attendance_v2'?'active':'' ?>">
 	<i class="bi bi-calendar-check-fill"></i> Attendance
 	</a>
 	<?php endif; ?>
       <?php if (can('view_attendance')): ?>
-      <a href="?page=view_attendance" class="nav-link <?= $page==='view_attendance'?'active':'' ?>">
+      <a href="?page=view_attendance_v2" class="nav-link <?= $page==='view_attendance_v2'?'active':'' ?>">
         <i class="bi bi-eye-fill"></i> View Attendance
       </a>
       <?php endif; ?>
@@ -214,7 +214,7 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
     </a>
     <?php endif; ?>
     <?php if (can('edit_attendance')): ?>
-    <a href="?page=attendance" class="bottom-nav-item <?= $page==='attendance'?'active':'' ?>">
+    <a href="?page=attendance_v2" class="bottom-nav-item <?= $page==='attendance_v2'?'active':'' ?>">
       <i class="bi bi-calendar-check-fill"></i> Attend.
     </a>
     <?php endif; ?>

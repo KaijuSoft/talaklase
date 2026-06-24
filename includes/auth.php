@@ -23,8 +23,8 @@ function can_any(array $permissions): bool {
 function page_permission(string $page): ?string {
     $map = [
         'students' => 'view_students',
-        'attendance' => 'edit_attendance',
-        'view_attendance' => 'view_attendance',
+        'attendance_v2' => 'edit_attendance',
+        'view_attendance_v2' => 'view_attendance',
         'print_attendance' => 'view_attendance',
         'grades' => 'view_grades',
         'score_settings' => 'manage_score_settings',
