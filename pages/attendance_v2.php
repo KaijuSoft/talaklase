@@ -236,6 +236,30 @@ $ayId = current_ay_id($pdo);
 $timeIn = date('Y-m-d H:i:s');
         try {
             $pdo->beginTransaction();
+			$chk = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM attendance
+    WHERE assignment_id = ?
+      AND _date = ?
+      AND term = ?
+");
+
+$chk->execute([
+    $records[0]['assignment_id'],
+    $date,
+    $term
+]);
+
+if ($chk->fetchColumn() > 0) {
+
+    echo json_encode([
+        'success' => false,
+        'message' =>
+            'Attendance already exists for this date and term. Use Update instead.'
+    ]);
+
+    exit;
+}
            $ins = $pdo->prepare("INSERT INTO attendance(st_id,sectionID,assignment_id,_date,status,term,ay_id,time_in) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
             foreach ($records as $r) {
                 $ins->execute([$r['st_id'], $r['sectionID'], $r['assignment_id'], $date, $r['status'], $term, $ayId, $timeIn]);
@@ -252,7 +276,7 @@ $timeIn = date('Y-m-d H:i:s');
     }
 
     // ── Load existing attendance for editing (EditAtt) ────────────────────────
-    if ($action === 'load_edit') {
+    /*if ($action === 'load_edit') {*/
         $q    = trim($_POST['q'] ?? '');
         $term = $_POST['term'];
         $date = $_POST['date'];
@@ -546,7 +570,7 @@ function checkExistingAttendance() {
 
 }
 
-function searchStudents() {
+/*function searchStudents() {
   const q  = document.getElementById('att_search').value.trim();
   const by = document.getElementById('att_search_by').value;
 
@@ -556,7 +580,7 @@ function searchStudents() {
   fetch('', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
     body: new URLSearchParams({action:actionMap[by], q})})
   .then(r=>r.json()).then(data => renderGrid(data, false));
-}
+}*/
 
 function renderGrid(data, editData) {
   attStudents = data;
