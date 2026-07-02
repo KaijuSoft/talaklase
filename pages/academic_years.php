@@ -41,17 +41,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $stmt = $pdo->prepare("
-                INSERT INTO academic_year
-                (
-                    ay_name,
-                    start_date,
-                    end_date,
-                    is_active
-                )
-                VALUES
-                (
-                    ?, ?, ?, 0
-                )
+               INSERT INTO academic_year
+				(
+				ay_name,
+				start_date,
+				end_date,
+				is_active,
+				status
+				)
+				VALUES
+				(
+				?, ?, ?, 0, 'Closed'
+				)
             ");
 
             $stmt->execute([
@@ -73,17 +74,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ayId = (int)($_POST['ay_id'] ?? 0);
 
             $pdo->exec("
-                UPDATE academic_year
-                SET is_active = 0
-            ");
+		UPDATE academic_year
+		SET
+			is_active = 0,
+			status = 'Closed'
+	");
 
-            $stmt = $pdo->prepare("
-                UPDATE academic_year
-                SET is_active = 1
-                WHERE ay_id = ?
-            ");
+	$stmt = $pdo->prepare("
+		UPDATE academic_year
+		SET
+			is_active = 1,
+			status = 'Active'
+		WHERE ay_id = ?
+	");
 
-            $stmt->execute([$ayId]);
+	$stmt->execute([$ayId]);
 
             echo json_encode([
                 'success' => true,
@@ -167,9 +172,7 @@ $years = $pdo->query("
                     <td>
 
                         <?=
-                            $year['is_active']
-                            ? 'Active'
-                            : 'Inactive'
+                          <?= htmlspecialchars($year['status']) ?>
                         ?>
 
                     </td>

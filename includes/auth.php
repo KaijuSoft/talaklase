@@ -37,7 +37,8 @@ function page_permission(string $page): ?string {
         'sync' => 'sync_settings',
 		'db_backup' => 'sync_settings',
 		'teaching_loads' => 'manage_teaching_loads',
-		'academic_years' => 'manage_academic_years'
+		'academic_years' => 'manage_academic_years',
+		'student_enrollment' => 'manage_student_enrollment'
     ];
 
     return $map[$page] ?? null;
@@ -54,7 +55,8 @@ $PERMISSIONS = [
     'manage_instructors','manage_users',
     'sync_settings',    'print_reports',
     'manage_score_settings', 
-	'manage_teaching_loads', 'manage_academic_years'
+	'manage_teaching_loads', 'manage_academic_years',
+	'manage_student_enrollment',
     ],
     'instructor_admin' => [
         'view_students',    'edit_students',

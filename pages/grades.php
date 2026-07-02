@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // ── Save scores ───────────────────────────────────────────────────────────
     if ($action === 'save_component') {
-        require_permission('manage_grades');
+        require_permission('edit_grades');
         $sec  = (int)$_POST['section_id'];
         $sub  = (int)$_POST['subject_id'];
         $term = $_POST['term'];

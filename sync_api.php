@@ -2,6 +2,7 @@
 // sync_api.php - dedicated endpoint for sync AJAX and SSE calls
 // Called by sync.php via fetch('sync_api.php', ...)
 error_reporting(E_ALL & ~E_DEPRECATED);
+require_once __DIR__ . '/includes/TALA/bootstrap.php';
 require_once __DIR__ . '/includes/auth.php';
 require_permission('sync_settings');
 
@@ -103,6 +104,111 @@ if ($action === 'check_newer') {
     } catch (Exception $e) {
         echo json_encode(['result'=>'error','message'=>'Error: '.$e->getMessage()]);
     }
+    exit;
+}
+
+// ─────────────────────────────────────────────────────────────
+// TALA Engine v0.1 - Smart Merge (BETA)
+// ─────────────────────────────────────────────────────────────
+
+if ($action === 'smart_merge') {
+
+    header('Content-Type: text/event-stream');
+    header('Cache-Control: no-cache');
+    header('X-Accel-Buffering: no');
+
+    if (ob_get_level()) ob_end_clean();
+
+    function sendEvent($msg, $table='—', $current=0, $total=1, $type='progress') {
+
+        echo "data: " . json_encode([
+            'type'=>$type,
+            'message'=>$msg,
+            'table'=>$table,
+            'current'=>$current,
+            'total'=>$total
+        ]) . "\n\n";
+
+        flush();
+    }
+
+    try {
+
+        $srcCon = getLocalConn();
+        $dstCon = getOnlineConn();
+
+        sendEvent(
+            'Starting Smart Merge...',
+            'Initializing',
+            0,
+            1
+        );
+
+     require_once __DIR__ . '/includes/TALA/bootstrap.php';
+
+$config = require __DIR__ . '/includes/TALA/TalaKlaseConfig.php';
+
+$engine = new \Tala\Engine\TalaEngine(
+    $srcCon,
+    $dstCon,
+    $config
+);
+
+$engine->onProgress(
+    function (
+        string $table,
+        array $result,
+        int $current,
+        int $total
+    ) {
+
+        sendEvent(
+            "Inserted {$result['inserted']} | Skipped {$result['skipped']}",
+            $table,
+            $current,
+            $total,
+            'progress'
+        );
+
+    }
+);
+
+$session = $engine->syncDatabase();
+
+sendEvent(
+    'Synchronization completed successfully.',
+    'Finished',
+    1,
+    1,
+    'done'
+);
+
+sendEvent(
+    $session->summary(),
+    'Summary',
+    1,
+    1,
+    'summary'
+);
+
+    } catch(Exception $e){
+
+        sendEvent(
+
+            $e->getMessage(),
+
+            'Error',
+
+            0,
+
+            1,
+
+            'error'
+
+        );
+
+    }
+
     exit;
 }
 

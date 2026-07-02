@@ -91,8 +91,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->beginTransaction();
             $upd = $pdo->prepare("UPDATE student SET st_lastname=?,st_name=?,st_middlename=?,st_suffix=?,st_gender=?,course_id=? WHERE st_id=?");
             $upd->execute([$_POST['lastname'],$_POST['firstname'],$_POST['middlename'],$_POST['suffix'],$_POST['gender'],$_POST['course_id'],$_POST['st_id']]);
-            $updSec = $pdo->prepare("UPDATE student_section SET sectionID=?,yearlvl=? WHERE st_id=?");
-            $updSec->execute([$_POST['section_id'],$_POST['year_level'],$_POST['st_id']]);
+			$ayId = current_ay_id($pdo);
+			$updSec = $pdo->prepare("UPDATE student_section SET sectionID=?,yearlvl=? WHERE st_id=? AND ay_id=?");
+            $updSec->execute([$_POST['section_id'],$_POST['year_level'],$_POST['st_id'], $ayId]);
             $pdo->commit();
             echo json_encode(['success'=>true,'message'=>'Student updated.']);
         } catch (Exception $e) {

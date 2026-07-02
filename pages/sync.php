@@ -7,7 +7,7 @@ require_permission('sync_settings');
 
 <div class="card mb-3">
   <div class="card-header">
-    <h6 class="mb-0"><i class="bi bi-arrow-left-right me-2 text-primary"></i>Database Sync</h6>
+    <h6 class="mb-0"><i class="bi bi-arrow-left-right me-2 text-primary"></i>Smart Sync Status</h6>
   </div>
   <div class="card-body">
 
@@ -58,6 +58,15 @@ require_permission('sync_settings');
       <button class="btn btn-success" onclick="startSync('push_to_local')" id="btnPushLocal" disabled>
         <i class="bi bi-download me-1"></i> Push Online → Local
       </button>
+	  <button
+    class="btn btn-warning"
+    onclick="startSmartMerge()">
+
+    <i class="bi bi-cpu-fill me-1"></i>
+
+    Smart Merge (Beta)
+
+</button>
       <button class="btn btn-outline-secondary" onclick="checkStatus()">
         <i class="bi bi-arrow-clockwise me-1"></i> Refresh Status
       </button>
@@ -235,5 +244,85 @@ function updateProgress(d) {
     document.getElementById('btnPushOnline').disabled = false;
     document.getElementById('btnPushLocal').disabled  = false;
   }
+}
+
+function startSmartMerge(){
+
+    if(
+        !confirm(
+            "Run Smart Merge?\n\nNo records will be deleted."
+        )
+    ){
+        return;
+    }
+
+    document
+        .getElementById('syncPanel')
+        .classList
+        .remove('d-none');
+
+    fetch(API,{
+
+        method:'POST',
+
+        headers:{
+            'Content-Type':
+            'application/x-www-form-urlencoded'
+        },
+
+        body:new URLSearchParams({
+
+            action:'smart_merge'
+
+        })
+
+    })
+
+    .then(response=>{
+
+        const reader=response.body.getReader();
+
+        const decoder=new TextDecoder();
+
+        let buffer='';
+
+        function read(){
+
+            reader.read().then(({done,value})=>{
+
+                if(done)return;
+
+                buffer+=decoder.decode(value,{stream:true});
+
+                const lines=buffer.split('\n');
+
+                buffer=lines.pop();
+
+                lines.forEach(line=>{
+
+                    if(line.startsWith('data: ')){
+
+                        updateProgress(
+
+                            JSON.parse(
+                                line.substring(6)
+                            )
+
+                        );
+
+                    }
+
+                });
+
+                read();
+
+            });
+
+        }
+
+        read();
+
+    });
+
 }
 </script>

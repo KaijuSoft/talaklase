@@ -31,3 +31,34 @@ function getConnection(): PDO {
         }
     }
 }
+
+
+function getLocalConnection(): PDO
+{
+    $dsn = "mysql:host=127.0.0.1;port=3306;dbname=talaklasedb;charset=utf8";
+
+    return new PDO(
+        $dsn,
+        "root",
+        "",
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        ]
+    );
+}
+
+function getOnlineConnection(): PDO
+{
+    $dsn = "mysql:host=sql12.freesqldatabase.com;port=3306;dbname=sql12817970;charset=utf8";
+
+    return new PDO(
+        $dsn,
+        "sql12817970",
+        "N9dIfCwPRj",
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        ]
+    );
+}

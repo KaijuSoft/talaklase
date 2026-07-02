@@ -371,7 +371,7 @@ $sections = $sectionsStmt->fetchAll();
           <th>#</th>
           <th>Section</th>
           <th>Course</th>
-          <th>Owner</th>
+          <th>Adviser</th>
           <th class="text-end">Actions</th>
         </tr>
       </thead>

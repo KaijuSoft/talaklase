@@ -9,7 +9,7 @@ include 'includes/update_banner.php';
 date_default_timezone_set('Asia/Manila');
 
 $page = $_GET['page'] ?? 'students';
-$allowed = ['students','attendance_v2','view_attendance_v2','print_attendance_v2','grades','score_settings','courses','departments','instructors','instructor_accounts','sections','subjects','sync','db_backup','teaching_loads','academic_years'];
+$allowed = ['students','attendance_v2','view_attendance_v2','print_attendance_v2','grades','score_settings','courses','departments','instructors','instructor_accounts','sections','subjects','sync','db_backup','teaching_loads','academic_years','student_enrollment'];
 if (!in_array($page, $allowed)) $page = 'students';
 
 $permission = page_permission($page);
@@ -30,7 +30,8 @@ $titles = [
   'students'=>'Student Records','attendance_v2'=>'Attendance','view_attendance_v2'=>'View Attendance',
   'print_attendance_v2'=>'Print Attendance','grades'=>'Grading Form','score_settings'=>'Score Settings',
   'courses'=>'Courses','departments'=>'Departments','instructors'=>'Instructors','instructor_accounts'=>'Instructor Accounts',
-  'sections'=>'Sections','subjects'=>'Subjects','sync'=>'Database Sync','db_backup' =>'Database Backup','teaching_loads' => 'Teaching Loads','academic_years' => 'Academic Years'
+  'sections'=>'Sections','subjects'=>'Subjects','sync'=>'Smart Sync','db_backup' =>'Database Backup','teaching_loads' => 'Teaching Loads','academic_years' => 'Academic Years',
+  'student_enrollment' => 'Enroll Student',
 ];
 $currentTitle = $titles[$page] ?? 'Dashboard';
 $managementPages = ['departments','courses','sections','subjects','instructors','instructor_accounts'];
@@ -99,7 +100,7 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
 	  
       <?php if (can('sync_settings')): ?>
 	<a href="?page=sync" class="nav-link <?= $page==='sync'?'active':'' ?>">
-	<i class="bi bi-arrow-left-right"></i> DB Sync
+	<i class="bi bi-arrow-left-right"></i> Smart Sync
 	</a>
 	<?php endif; ?>
 	
@@ -123,6 +124,12 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
       <i class="bi bi-book-fill"></i> Courses
     </a>
     <?php endif; ?>
+	 <?php if (can('manage_student_enrollment')): ?>
+	<a href="?page=student_enrollment" class="nav-link">
+    <i class="bi bi-journal-check"></i>
+    Student Enrollment
+	</a>
+	<?php endif; ?>
       <?php if (can('manage_sections')): ?>
     <a href="?page=sections" class="nav-link <?= $page==='sections'?'active':'' ?>">
       <i class="bi bi-grid-fill"></i> Sections

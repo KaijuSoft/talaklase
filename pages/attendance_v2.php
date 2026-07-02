@@ -228,74 +228,101 @@ if ($action === 'load_existing') {
     exit;
 }
     // ── Save attendance (INSERT) ───────────────────────────────────────────────
-    if ($action === 'save') {
-$records = json_decode($_POST['records'], true);
-$date    = $_POST['date'];
-$term    = $_POST['term'];
-$ayId = current_ay_id($pdo);
-$timeIn = date('Y-m-d H:i:s');
-        try {
-            $pdo->beginTransaction();
-			$chk = $pdo->prepare("
-    SELECT COUNT(*)
-    FROM attendance
-    WHERE assignment_id = ?
-      AND _date = ?
-      AND term = ?
-");
+   if ($action === 'save') {
 
-$chk->execute([
-    $records[0]['assignment_id'],
-    $date,
-    $term
-]);
+    $records = json_decode($_POST['records'], true);
+    $date    = $_POST['date'];
+    $term    = $_POST['term'];
+    $ayId    = current_ay_id($pdo);
+    $timeIn  = date('Y-m-d H:i:s');
 
-if ($chk->fetchColumn() > 0) {
+    // Prevent duplicate attendance for same load/date/term
+    if (!empty($records)) {
 
-    echo json_encode([
-        'success' => false,
-        'message' =>
-            'Attendance already exists for this date and term. Use Update instead.'
-    ]);
+        $chk = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM attendance
+            WHERE assignment_id = ?
+              AND _date = ?
+              AND term = ?
+        ");
+
+        $chk->execute([
+            $records[0]['assignment_id'],
+            $date,
+            $term
+        ]);
+
+        if ($chk->fetchColumn() > 0) {
+
+            echo json_encode([
+                'success' => false,
+                'message' =>
+                    'Attendance already exists for this date and term. Use Update instead.'
+            ]);
+
+            exit;
+        }
+    }
+
+    try {
+
+        $pdo->beginTransaction();
+
+        $ins = $pdo->prepare("
+            INSERT INTO attendance
+            (
+                st_id,
+                sectionID,
+                assignment_id,
+                _date,
+                status,
+                term,
+                ay_id,
+                time_in
+            )
+            VALUES
+            (
+                ?, ?, ?, ?, ?, ?, ?, ?
+            )
+        ");
+
+        foreach ($records as $r) {
+
+            $ins->execute([
+                $r['st_id'],
+                $r['sectionID'],
+                $r['assignment_id'],
+                $date,
+                $r['status'],
+                $term,
+                $ayId,
+                $timeIn
+            ]);
+        }
+
+        $pdo->commit();
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Attendance saved successfully!'
+        ]);
+
+    } catch (Exception $e) {
+
+        $pdo->rollBack();
+
+        echo json_encode([
+            'success' => false,
+            'message' =>
+                'Error saving attendance: ' .
+                $e->getMessage()
+        ]);
+    }
 
     exit;
 }
-           $ins = $pdo->prepare("INSERT INTO attendance(st_id,sectionID,assignment_id,_date,status,term,ay_id,time_in) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            foreach ($records as $r) {
-                $ins->execute([$r['st_id'], $r['sectionID'], $r['assignment_id'], $date, $r['status'], $term, $ayId, $timeIn]);
-            }
-            $pdo->commit();
 
-
-            echo json_encode(['success'=>true,'message'=>'Attendance saved successfully!']);
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            echo json_encode(['success'=>false,'message'=>'Error saving attendance: '.$e->getMessage()]);
-        }
-        exit;
-    }
-
-    // ── Load existing attendance for editing (EditAtt) ────────────────────────
-    /*if ($action === 'load_edit') {*/
-        $q    = trim($_POST['q'] ?? '');
-        $term = $_POST['term'];
-        $date = $_POST['date'];
-        // Match VB: search by section or name, then load existing attendance status
-        $stmt = $pdo->prepare("SELECT s.st_id AS ID, ss.sectionID AS SecID,
-            CONCAT(s.st_lastname,', ',s.st_name,' ',s.st_middlename) AS FullName,
-            sec.section,
-            IFNULL(a.status,'Absent') AS status
-            FROM student s
-            INNER JOIN student_section ss ON s.st_id=ss.st_id
-            INNER JOIN section sec ON sec.sectionID=ss.sectionID
-            LEFT JOIN attendance a ON a.st_id=s.st_id AND a.sectionID=ss.sectionID AND a._date=:date AND a.term=:term
-          WHERE (sec.section LIKE :pat OR s.st_lastname LIKE :pat2)
-          {$sectionScope['sql']}
-            ORDER BY sec.section, s.st_lastname");
-        $stmt->execute(array_merge([':pat'=>$q.'%', ':pat2'=>"%$q%", ':date'=>$date, ':term'=>$term], $sectionScope['params']));
-        echo json_encode($stmt->fetchAll());
-        exit;
-    }
 
     // ── Update attendance (Editattendance) ────────────────────────────────────
    if ($action === 'update') {
