@@ -1,5 +1,13 @@
 # TalaKlase Development Rules
 
+## Required Reading
+
+Before making any changes:
+
+1. Read AGENTS.md
+2. Read TESTING.md
+3. Read the entire file(s) to be modified
+
 ## Read First
 
 Always read the ENTIRE file before making changes.
@@ -71,3 +79,16 @@ Never claim a feature works unless it has been executed.
 Syntax checks are not functional tests.
 
 If database operations cannot be executed safely, state that clearly.
+
+## Regression Policy
+
+Before implementing new features:
+
+1. Run existing regression tests.
+2. Make the requested change.
+3. Run relevant regression tests again.
+4. Report any new failures.
+
+Do not ignore or disable failing tests.
+
+Treat every regression as a release blocker until resolved.

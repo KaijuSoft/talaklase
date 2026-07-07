@@ -1,0 +1,43 @@
+{
+  "name": "talaklase_with_instructor",
+  "version": "1.0.0",
+  "description": "Converted from VB.NET WinForms to PHP + MySQL",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+ "scripts": {
+  "test": "playwright test",
+  "test:smoke": "playwright test tests/smoke",
+  "test:auth": "playwright test tests/auth",
+  "test:dashboard": "playwright test tests/dashboard",
+  "test:departments": "playwright test tests/departments",
+  "test:courses": "playwright test tests/courses",
+  "test:subjects": "playwright test tests/subjects",
+  "test:sections": "playwright test tests/sections",
+  "test:students": "playwright test tests/students",
+  "test:enrollment": "playwright test tests/enrollment",
+  "test:attendance": "playwright test tests/attendance",
+  "test:grades": "playwright test tests/grades",
+  "test:reports": "playwright test tests/reports",
+  "test:sync": "playwright test tests/sync",
+  "test:headed": "playwright test --headed",
+  "test:debug": "playwright test --debug",
+  "test:ui": "playwright test --ui"
+},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SunriseRaven/talaklase.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/SunriseRaven/talaklase/issues"
+  },
+  "homepage": "https://github.com/SunriseRaven/talaklase#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.61.1"
+  }
+}
