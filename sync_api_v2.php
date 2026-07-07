@@ -33,19 +33,17 @@ $engine->onProgress(
 
     ) {
 
-        sendEvent(
+        echo "<p>";
 
-            "Inserted {$result['inserted']} | Skipped {$result['skipped']}",
+        echo "{$current}/{$total} - {$table} : ";
 
-            $table,
+        echo "Inserted {$result['inserted']} | ";
 
-            $current,
+        echo "Skipped {$result['skipped']}";
 
-            $total,
+        echo "</p>";
 
-            'progress'
-
-        );
+        flush();
 
     }
 
@@ -56,6 +54,16 @@ echo "<h2>TALA Engine Ready</h2>";
 echo "<pre>";
 
 print_r($engine->about());
+
+echo "</pre>";
+
+echo "<hr>";
+
+echo "<h2>Health Check</h2>";
+
+echo "<pre>";
+
+print_r($engine->healthCheck());
 
 echo "</pre>";
 

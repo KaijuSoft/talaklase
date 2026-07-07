@@ -49,25 +49,26 @@ require_permission('sync_settings');
 
     <!-- Action buttons -->
     <div class="d-flex flex-wrap gap-3 mb-4">
-      <button class="btn btn-outline-primary" onclick="checkNewer()">
+      <button class="btn btn-outline-primary" id="btnCheckNewer" type="button">
         <i class="bi bi-search me-1"></i> Check Which is Newer
       </button>
-      <button class="btn btn-primary" onclick="startSync('push_to_online')" id="btnPushOnline" disabled>
+      <button class="btn btn-primary" id="btnPushOnline" type="button" disabled>
         <i class="bi bi-cloud-upload-fill me-1"></i> Push Local → Online
       </button>
-      <button class="btn btn-success" onclick="startSync('push_to_local')" id="btnPushLocal" disabled>
+      <button class="btn btn-success" id="btnPushLocal" type="button" disabled>
         <i class="bi bi-download me-1"></i> Push Online → Local
       </button>
 	  <button
     class="btn btn-warning"
-    onclick="startSmartMerge()">
+    id="btnSmartMerge"
+    type="button">
 
     <i class="bi bi-cpu-fill me-1"></i>
 
     Smart Merge (Beta)
 
 </button>
-      <button class="btn btn-outline-secondary" onclick="checkStatus()">
+      <button class="btn btn-outline-secondary" id="btnRefreshStatus" type="button">
         <i class="bi bi-arrow-clockwise me-1"></i> Refresh Status
       </button>
     </div>
@@ -92,237 +93,93 @@ require_permission('sync_settings');
       <!-- Log output — mirrors VB.NET WriteLog -->
       <div id="syncLog" class="border rounded bg-white p-2"
         style="max-height:200px;overflow-y:auto;font-size:0.78rem;font-family:monospace"></div>
+		<hr class="my-3">
+
+<div id="summaryCard" class="card border-success d-none">
+
+    <div class="card-header bg-success text-white">
+
+        <i class="bi bi-clipboard-check me-2"></i>
+
+        Synchronization Summary
+
+    </div>
+
+    <div class="card-body">
+
+       <div id="summaryContent" class="row g-3">
+
+    <div class="col-md-3">
+        <div class="card border-primary h-100">
+            <div class="card-body text-center">
+                <small class="text-muted">Duration</small>
+                <h5 id="sumDuration" class="mb-0">0 sec</h5>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card border-success h-100">
+            <div class="card-body text-center">
+                <small class="text-muted">Tables</small>
+                <h5 id="sumTables" class="mb-0">0</h5>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <small class="text-muted">Inserted</small>
+                <h5 id="sumInserted" class="mb-0">0</h5>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <small class="text-muted">Skipped</small>
+                <h5 id="sumSkipped" class="mb-0">0</h5>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <small class="text-muted">Modified</small>
+                <h5 id="sumModified" class="mb-0">0</h5>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <small class="text-muted">Failed</small>
+                <h5 id="sumFailed" class="mb-0">0</h5>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <small class="text-muted">Conflicts</small>
+                <h5 id="sumConflicts" class="mb-0">0</h5>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+    </div>
+
+</div>
     </div>
 
   </div>
 </div>
 
-<script>
-const API = 'sync_api.php';
-
-window.addEventListener('DOMContentLoaded', checkStatus);
-
-function checkStatus() {
-  document.getElementById('onlineStatus').textContent = 'Checking…';
-  document.getElementById('localStatus').textContent  = 'Checking…';
-
-  fetch(API, {
-    method: 'POST',
-    headers: {'Content-Type':'application/x-www-form-urlencoded'},
-    body: new URLSearchParams({action:'check_status'})
-  })
-  .then(r => r.json())
-  .then(data => {
-    // Online
-    document.getElementById('onlineStatus').textContent = data.online ? 'Connected' : 'Unavailable';
-    document.getElementById('onlineStatus').className   = 'fw-bold ' + (data.online ? 'text-success' : 'text-danger');
-    document.getElementById('onlineDot').style.background = data.online ? '#198754' : '#dc3545';
-    document.getElementById('onlineTime').textContent   = data.online_time ? 'Last sync: ' + data.online_time : '';
-
-    // Local
-    document.getElementById('localStatus').textContent  = data.local ? 'Connected' : 'Unavailable';
-    document.getElementById('localStatus').className    = 'fw-bold ' + (data.local ? 'text-success' : 'text-danger');
-    document.getElementById('localDot').style.background = data.local ? '#198754' : '#dc3545';
-    document.getElementById('localTime').textContent    = data.local_time ? 'Last sync: ' + data.local_time : '';
-
-    // Only enable sync buttons if BOTH DBs are available
-    const bothAvail = data.online && data.local;
-    document.getElementById('btnPushOnline').disabled = !bothAvail;
-    document.getElementById('btnPushLocal').disabled  = !bothAvail;
-  })
-  .catch(() => {
-    document.getElementById('onlineStatus').textContent = 'Error';
-    document.getElementById('localStatus').textContent  = 'Error';
-  });
-}
-
-function checkNewer() {
-  const banner = document.getElementById('detectBanner');
-  banner.className = 'alert alert-info mb-4';
-  banner.classList.remove('d-none');
-  banner.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Checking timestamps…';
-
-  fetch(API, {
-    method: 'POST',
-    headers: {'Content-Type':'application/x-www-form-urlencoded'},
-    body: new URLSearchParams({action:'check_newer'})
-  })
-  .then(r => r.json())
-  .then(data => {
-    const icons   = {in_sync:'✅', local_newer:'💻', online_newer:'☁️', error:'❌'};
-    const classes = {in_sync:'alert-success', local_newer:'alert-warning', online_newer:'alert-info', error:'alert-danger'};
-    banner.className = `alert ${classes[data.result] || 'alert-secondary'} mb-4`;
-    banner.innerHTML = `${icons[data.result] || ''} ${data.message}`;
-  });
-}
-
-function startSync(direction) {
-  const msg = direction === 'push_to_online'
-    ? 'Push Local → Online?\n\nThis will OVERWRITE all online data with local data.'
-    : 'Push Online → Local?\n\nThis will OVERWRITE all local data with online data.';
-
-  if (!confirm(msg)) return;
-
-  // Show progress panel
-  const panel = document.getElementById('syncPanel');
-  panel.classList.remove('d-none');
-  document.getElementById('syncLog').innerHTML = '';
-  document.getElementById('syncProgress').style.width = '0%';
-  document.getElementById('syncProgress').textContent = '0%';
-  document.getElementById('syncProgress').className = 'progress-bar progress-bar-striped progress-bar-animated bg-primary';
-  document.getElementById('syncCount').textContent  = '0 / 0 Tables';
-  document.getElementById('syncStatus').textContent = 'Initializing…';
-  document.getElementById('syncTable').textContent  = '—';
-  document.getElementById('syncTitle').innerHTML    = '<i class="bi bi-arrow-repeat me-2 text-primary"></i>Syncing Database…';
-  document.getElementById('btnPushOnline').disabled = true;
-  document.getElementById('btnPushLocal').disabled  = true;
-
-  // Fetch SSE stream from sync_api.php
-  fetch(API, {
-    method: 'POST',
-    headers: {'Content-Type':'application/x-www-form-urlencoded'},
-    body: new URLSearchParams({action: direction})
-  })
-  .then(response => {
-    const reader  = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    function read() {
-      reader.read().then(({done, value}) => {
-        if (done) return;
-        buffer += decoder.decode(value, {stream: true});
-        const lines = buffer.split('\n');
-        buffer = lines.pop();
-        lines.forEach(line => {
-          if (line.startsWith('data: ')) {
-            try {
-              updateProgress(JSON.parse(line.slice(6)));
-            } catch(e) {}
-          }
-        });
-        read();
-      });
-    }
-    read();
-  })
-  .catch(err => {
-    showToast('Connection error: ' + err.message, 'danger');
-    document.getElementById('btnPushOnline').disabled = false;
-    document.getElementById('btnPushLocal').disabled  = false;
-  });
-}
-
-function updateProgress(d) {
-  const pct = d.total > 0 ? Math.round((d.current / d.total) * 100) : 0;
-
-  document.getElementById('syncTable').textContent    = d.table    || '—';
-  document.getElementById('syncStatus').textContent   = d.message  || '';
-  document.getElementById('syncCount').textContent    = `${d.current} / ${d.total} Tables`;
-  document.getElementById('syncProgress').style.width = pct + '%';
-  document.getElementById('syncProgress').textContent = pct + '%';
-
-  // Append to log
-  const log = document.getElementById('syncLog');
-  const ts  = new Date().toLocaleTimeString();
-  log.innerHTML += `<div>[${ts}] ${d.message} — <em>${d.table}</em></div>`;
-  log.scrollTop  = log.scrollHeight;
-
-  if (d.type === 'done') {
-    document.getElementById('syncProgress').className = 'progress-bar bg-success';
-    document.getElementById('syncTitle').innerHTML = '<i class="bi bi-check-circle-fill me-2 text-success"></i>Sync Complete!';
-    showToast('Sync completed successfully!', 'success');
-    checkStatus(); // refresh status cards
-    document.getElementById('btnPushOnline').disabled = false;
-    document.getElementById('btnPushLocal').disabled  = false;
-  }
-
-  if (d.type === 'error') {
-    document.getElementById('syncProgress').className = 'progress-bar bg-danger';
-    document.getElementById('syncTitle').innerHTML = '<i class="bi bi-x-circle-fill me-2 text-danger"></i>Sync Failed!';
-    showToast(d.message, 'danger');
-    document.getElementById('btnPushOnline').disabled = false;
-    document.getElementById('btnPushLocal').disabled  = false;
-  }
-}
-
-function startSmartMerge(){
-
-    if(
-        !confirm(
-            "Run Smart Merge?\n\nNo records will be deleted."
-        )
-    ){
-        return;
-    }
-
-    document
-        .getElementById('syncPanel')
-        .classList
-        .remove('d-none');
-
-    fetch(API,{
-
-        method:'POST',
-
-        headers:{
-            'Content-Type':
-            'application/x-www-form-urlencoded'
-        },
-
-        body:new URLSearchParams({
-
-            action:'smart_merge'
-
-        })
-
-    })
-
-    .then(response=>{
-
-        const reader=response.body.getReader();
-
-        const decoder=new TextDecoder();
-
-        let buffer='';
-
-        function read(){
-
-            reader.read().then(({done,value})=>{
-
-                if(done)return;
-
-                buffer+=decoder.decode(value,{stream:true});
-
-                const lines=buffer.split('\n');
-
-                buffer=lines.pop();
-
-                lines.forEach(line=>{
-
-                    if(line.startsWith('data: ')){
-
-                        updateProgress(
-
-                            JSON.parse(
-                                line.substring(6)
-                            )
-
-                        );
-
-                    }
-
-                });
-
-                read();
-
-            });
-
-        }
-
-        read();
-
-    });
-
-}
-</script>
+<script src="assets/js/sync.js"></script>

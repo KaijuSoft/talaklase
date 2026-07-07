@@ -125,6 +125,42 @@ final class TalaEngine
             $this->describeConnection($this->destination),
         );
 
+	$health = $this->healthCheck();
+		
+		$failedChecks = [];
+
+	foreach ($health['checks'] as $check) {
+
+    if (!$check['status']) {
+
+        $failedChecks[] =
+            "{$check['name']}: {$check['message']}";
+
+		}
+
+	}
+		
+	if (!$health['status']) {
+
+    $message = "Health Check failed.\n\n";
+
+    if (!empty($failedChecks)) {
+
+        $message .= "Failed Checks:\n";
+
+        foreach ($failedChecks as $failure) {
+            $message .= "• {$failure}\n";
+        }
+
+        $message .= "\n";
+    }
+
+    $message .= "Synchronization cancelled.";
+
+    throw new SyncException($message);
+
+}
+
         $total = count($this->syncOrder);
 
 $current = 0;
@@ -164,6 +200,197 @@ foreach ($this->syncOrder as $tableName) {
     {
         return $this->syncOrder;
     }
+	
+	public function healthCheck(): array
+{
+    $checks = [];
+
+    // Source database
+    try {
+
+        $this->source->query("SELECT 1");
+
+        $checks[] = [
+            'name'   => 'Source Database',
+            'status' => true,
+            'message'=> 'Connected'
+        ];
+
+    } catch (Throwable $e) {
+
+        $checks[] = [
+            'name'   => 'Source Database',
+            'status' => false,
+            'message'=> $e->getMessage()
+        ];
+
+    }
+
+    // Destination database
+    try {
+
+        $this->destination->query("SELECT 1");
+
+        $checks[] = [
+            'name'   => 'Destination Database',
+            'status' => true,
+            'message'=> 'Connected'
+        ];
+
+    } catch (Throwable $e) {
+
+        $checks[] = [
+            'name'   => 'Destination Database',
+            'status' => false,
+            'message'=> $e->getMessage()
+        ];
+
+    }
+
+   
+
+// Verify configured tables
+
+foreach (array_keys($this->tables) as $table) {
+
+    try {
+
+        $stmt = $this->source->query(
+            "SHOW TABLES LIKE " . $this->source->quote($table)
+        );
+
+        $exists = $stmt->fetchColumn() !== false;
+
+        $checks[] = [
+
+            'name'    => "Source Table: {$table}",
+            'status'  => $exists,
+            'message' => $exists
+                ? 'Exists'
+                : 'Missing'
+
+        ];
+
+    } catch (Throwable $e) {
+
+        $checks[] = [
+
+            'name'    => "Source Table: {$table}",
+            'status'  => false,
+            'message' => $e->getMessage()
+
+        ];
+
+    }
+	
+}
+
+// Verify destination tables
+
+foreach (array_keys($this->tables) as $table) {
+
+    try {
+
+        $stmt = $this->destination->query(
+            "SHOW TABLES LIKE " . $this->destination->quote($table)
+        );
+
+        $exists = $stmt->fetchColumn() !== false;
+
+        $checks[] = [
+
+            'name'    => "Destination Table: {$table}",
+            'status'  => $exists,
+            'message' => $exists
+                ? 'Exists'
+                : 'Missing'
+
+        ];
+
+    } catch (Throwable $e) {
+
+        $checks[] = [
+
+            'name'    => "Destination Table: {$table}",
+            'status'  => false,
+            'message' => $e->getMessage()
+
+        ];
+
+    }
+
+}
+
+	// Verify business key columns
+
+foreach ($this->tables as $table => $config) {
+
+    if (empty($config['business_key'])) {
+        continue;
+    }
+
+    foreach ($config['business_key'] as $column) {
+
+        try {
+
+            $stmt = $this->source->query("SHOW COLUMNS FROM `{$table}` LIKE " . $this->source->quote($column));
+
+            $exists = $stmt->fetch() !== false;
+
+            $checks[] = [
+
+                'name' => "Source Column: {$table}.{$column}",
+
+                'status' => $exists,
+
+                'message' => $exists
+                    ? 'Exists'
+                    : 'Missing'
+
+            ];
+
+        } catch (Throwable $e) {
+
+            $checks[] = [
+
+                'name' => "Source Column: {$table}.{$column}",
+
+                'status' => false,
+
+                'message' => $e->getMessage()
+
+            ];
+
+        }
+
+    }
+
+}
+
+		$passed = true;
+
+	foreach ($checks as $check) {
+
+		if (!$check['status']) {
+			$passed = false;
+			break;
+		}
+
+	}
+		
+		
+    return [
+
+        'status' => $passed,
+
+        'checks' => $checks
+
+    ];
+	
+
+}
+
+
 
     /**
      * Roadmap (v0.3): persist a synchronization journal entry for the

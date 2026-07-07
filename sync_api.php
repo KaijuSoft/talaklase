@@ -3,6 +3,7 @@
 // Called by sync.php via fetch('sync_api.php', ...)
 error_reporting(E_ALL & ~E_DEPRECATED);
 require_once __DIR__ . '/includes/TALA/bootstrap.php';
+use Tala\Engine\Exceptions\SyncException;
 require_once __DIR__ . '/includes/auth.php';
 require_permission('sync_settings');
 
@@ -183,31 +184,37 @@ sendEvent(
     'done'
 );
 
-sendEvent(
-    $session->summary(),
-    'Summary',
-    1,
-    1,
-    'summary'
-);
+echo "data: " . json_encode([
+    'type'    => 'summary',
+    'message' => 'Synchronization completed.',
+    'summary' => $session->toArray()
+]) . "\n\n";
 
-    } catch(Exception $e){
+flush();
 
-        sendEvent(
+		} catch (SyncException $e) {
 
-            $e->getMessage(),
+		sendEvent(
+			$e->getMessage(),
+			'Smart Merge',
+			0,
+			1,
+			'error'
+		);
 
-            'Error',
+	} catch (Throwable $e) {
 
-            0,
+		error_log($e);
 
-            1,
+		sendEvent(
+			'An unexpected system error occurred. Please contact the administrator.',
+			'System',
+			0,
+			1,
+			'error'
+		);
 
-            'error'
-
-        );
-
-    }
+	}
 
     exit;
 }
