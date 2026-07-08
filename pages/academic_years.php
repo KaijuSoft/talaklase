@@ -169,13 +169,10 @@ $years = $pdo->query("
                         <?= htmlspecialchars($year['end_date']) ?>
                     </td>
 
-                    <td>
-
-                        <?=
-                          <?= htmlspecialchars($year['status']) ?>
-                        ?>
-
-                    </td>
+                   <td>
+						<?= htmlspecialchars($year['status']) ?>
+					</td>
+					
 					<td>
 
 			<?php if (!$year['is_active']): ?>

@@ -171,6 +171,11 @@ Frontend
 
 The engine never communicates directly with HTML or JavaScript.
 
+TALA Engine Rule #001
+
+Every synchronized Master or Transaction table must define a business_key. 
+Synchronization decisions must be based on the business identity of a record rather than its auto-increment primary key.
+
 ---
 
 # Synchronization Flow

@@ -6,6 +6,10 @@ use Tala\Engine\TalaEngine;
 
 return [
 
+    // =========================================================
+    // REFERENCE TABLES
+    // =========================================================
+
     'department' => [
         'primary_key' => 'dept_id',
         'type' => TalaEngine::TYPE_REFERENCE,
@@ -13,7 +17,9 @@ return [
 
     'course' => [
         'primary_key' => 'course_id',
-        'depends' => ['department'],
+        'depends' => [
+            'department'
+        ],
         'type' => TalaEngine::TYPE_REFERENCE,
     ],
 
@@ -26,24 +32,214 @@ return [
         'primary_key' => 'ay_id',
         'type' => TalaEngine::TYPE_REFERENCE,
     ],
-	
-	'student' => [
 
-    'primary_key' => 'st_id',
+    // =========================================================
+    // MASTER TABLES
+    // =========================================================
+
+    'student' => [
+
+        'primary_key' => 'st_id',
+
+        'business_key' => [
+            'student_no'
+        ],
+
+        'ignore' => [
+            'st_id'
+        ],
+
+        'depends' => [
+            'course'
+        ],
+
+        'type' => TalaEngine::TYPE_MASTER,
+
+    ],
+
+    'instructor' => [
+
+        'primary_key' => 'inst_id',
+		
+		'business_key' => [
+			'inst_name'
+		],
+
+        'ignore' => [
+            'inst_id'
+        ],
+
+        'depends' => [
+            'department'
+        ],
+
+        'type' => TalaEngine::TYPE_MASTER,
+
+    ],
+
+    'users' => [
+
+        'primary_key' => 'id',
+
+        'business_key' => [
+            'username'
+        ],
+
+        'ignore' => [
+            'id'
+        ],
+
+        'depends' => [
+            'instructor'
+        ],
+
+        'type' => TalaEngine::TYPE_MASTER,
+
+    ],
+
+    // =========================================================
+    // ACADEMIC STRUCTURE
+    // =========================================================
+
+   'section_subjects' => [
+
+    'primary_key' => 'id',
 
     'business_key' => [
-        'student_no'
+        'sectionID',
+        'sub_id'
     ],
 
     'ignore' => [
-        'st_id'
+        'id'
     ],
 
     'depends' => [
-        'course'
+        'subject'
     ],
 
     'type' => TalaEngine::TYPE_MASTER,
 
+	],
+
+    'teaching_assignments' => [
+
+        'primary_key' => 'assignment_id',
+		
+		'business_key' => [
+			'sub_id',
+			'inst_id',
+			'sectionID',
+			'ay_id'
+		],
+
+        'ignore' => [
+            'assignment_id'
+        ],
+
+        'depends' => [
+            'subject',
+            'instructor',
+            'academic_year'
+        ],
+
+        'type' => TalaEngine::TYPE_MASTER,
+
+    ],
+
+    'student_section' => [
+
+        'primary_key' => 'stsec_id',
+		
+		'business_key' => [
+			'st_id',
+			'sectionID',
+			'yearlvl',
+			'ay_id'
+		],
+
+        'ignore' => [
+            'stsec_id'
+        ],
+
+        'depends' => [
+            'student',
+            'academic_year'
+        ],
+
+        'type' => TalaEngine::TYPE_MASTER,
+
+    ],
+
+    'student_subject' => [
+
+        'primary_key' => 'id',
+		
+		'business_key' => [
+			'st_id',
+			'assign_id'
+		],
+
+        'ignore' => [
+            'id'
+        ],
+
+        'depends' => [
+            'student',
+            'teaching_assignments'
+        ],
+
+        'type' => TalaEngine::TYPE_MASTER,
+
+    ],
+
+    'student_assignments' => [
+
+        'primary_key' => 'enrollment_id',
+		
+		'business_key' => [
+			'st_id',
+			'assignment_id',
+			'ay_id'
+		],
+
+        'ignore' => [
+            'enrollment_id'
+        ],
+
+        'depends' => [
+            'student',
+            'teaching_assignments',
+            'academic_year'
+        ],
+
+        'type' => TalaEngine::TYPE_MASTER,
+
+    ],
+	
+	'attendance' => [
+
+    'primary_key' => 'Att_ID',
+	
+	'business_key' => [
+		'st_id',
+		'assignment_id',
+		'_date',
+		'term'
+	],
+
+    'ignore' => [
+        'Att_ID'
+    ],
+
+    'depends' => [
+        'student',
+        'teaching_assignments',
+        'academic_year'
+    ],
+
+    'type' => TalaEngine::TYPE_TRANSACTION,
+
 ],
+
 ];

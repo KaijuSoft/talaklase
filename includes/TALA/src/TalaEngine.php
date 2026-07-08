@@ -321,27 +321,69 @@ foreach (array_keys($this->tables) as $table) {
 
 }
 
-	// Verify business key columns
+// ======================================================
+// Verify Business Keys
+// Rule #001:
+// Every MASTER and TRANSACTION table must define
+// a business_key.
+// ======================================================
 
 foreach ($this->tables as $table => $config) {
 
+    $type = $config['type'] ?? null;
+
+    // Business Key is mandatory for MASTER and TRANSACTION tables.
+    if (
+        in_array(
+            $type,
+            [
+                TalaEngine::TYPE_MASTER,
+                TalaEngine::TYPE_TRANSACTION
+            ],
+            true
+        ) &&
+        empty($config['business_key'])
+    ) {
+
+        $checks[] = [
+
+            'name'    => "Business Key: {$table}",
+
+            'status'  => false,
+
+            'message' => 'Missing business_key configuration'
+
+        ];
+
+        continue;
+
+    }
+
+    // Reference tables do not require business keys.
     if (empty($config['business_key'])) {
         continue;
     }
 
     foreach ($config['business_key'] as $column) {
 
+        // ---------------------------------------------
+        // Verify Source Column
+        // ---------------------------------------------
+
         try {
 
-            $stmt = $this->source->query("SHOW COLUMNS FROM `{$table}` LIKE " . $this->source->quote($column));
+            $stmt = $this->source->query(
+                "SHOW COLUMNS FROM `{$table}` LIKE " .
+                $this->source->quote($column)
+            );
 
             $exists = $stmt->fetch() !== false;
 
             $checks[] = [
 
-                'name' => "Source Column: {$table}.{$column}",
+                'name'    => "Source Column: {$table}.{$column}",
 
-                'status' => $exists,
+                'status'  => $exists,
 
                 'message' => $exists
                     ? 'Exists'
@@ -353,9 +395,48 @@ foreach ($this->tables as $table => $config) {
 
             $checks[] = [
 
-                'name' => "Source Column: {$table}.{$column}",
+                'name'    => "Source Column: {$table}.{$column}",
 
-                'status' => false,
+                'status'  => false,
+
+                'message' => $e->getMessage()
+
+            ];
+
+        }
+
+        // ---------------------------------------------
+        // Verify Destination Column
+        // ---------------------------------------------
+
+        try {
+
+            $stmt = $this->destination->query(
+                "SHOW COLUMNS FROM `{$table}` LIKE " .
+                $this->destination->quote($column)
+            );
+
+            $exists = $stmt->fetch() !== false;
+
+            $checks[] = [
+
+                'name'    => "Destination Column: {$table}.{$column}",
+
+                'status'  => $exists,
+
+                'message' => $exists
+                    ? 'Exists'
+                    : 'Missing'
+
+            ];
+
+        } catch (Throwable $e) {
+
+            $checks[] = [
+
+                'name'    => "Destination Column: {$table}.{$column}",
+
+                'status'  => false,
 
                 'message' => $e->getMessage()
 
@@ -367,16 +448,10 @@ foreach ($this->tables as $table => $config) {
 
 }
 
-		$passed = true;
-
-	foreach ($checks as $check) {
-
-		if (!$check['status']) {
-			$passed = false;
-			break;
-		}
-
-	}
+		$passed = !array_filter(
+    $checks,
+    static fn ($check) => !$check['status']
+);
 		
 		
     return [
