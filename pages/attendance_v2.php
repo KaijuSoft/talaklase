@@ -33,6 +33,54 @@ function attendanceSectionScope(array $ownedSectionIds, bool $isInstructorScoped
 
 $sectionScope = attendanceSectionScope($ownedSectionIds, $isInstructorScoped);
 
+function getTeachingAssignmentStartTime(PDO $pdo, int $assignmentId): ?string {
+  $stmt = $pdo->prepare("
+    SELECT start_time
+    FROM teaching_assignments
+    WHERE assignment_id = ?
+    LIMIT 1
+  ");
+  $stmt->execute([$assignmentId]);
+  $startTime = $stmt->fetchColumn();
+  return $startTime !== false ? $startTime : null;
+}
+
+function resolveAttendanceTimeIn(PDO $pdo, int $assignmentId, string $status, ?string $timeIn, string $date): array {
+  $startTime = getTeachingAssignmentStartTime($pdo, $assignmentId);
+
+  if ($status === 'Absent') {
+    return ['time_in' => null, 'time_override' => 0, 'late_minutes' => null];
+  }
+
+  if ($status === 'Late') {
+    $time = trim((string)$timeIn);
+    if (!preg_match('/^\d{2}:\d{2}$/', $time)) {
+      throw new InvalidArgumentException('Late attendance requires a valid time.');
+    }
+
+    $entered = new DateTime($date . ' ' . $time . ':00');
+    $lateMinutes = 0;
+
+    if ($startTime !== null && trim((string)$startTime) !== '') {
+      $scheduled = new DateTime($date . ' ' . $startTime);
+      $diffSeconds = $entered->getTimestamp() - $scheduled->getTimestamp();
+      $lateMinutes = max(0, (int)floor($diffSeconds / 60));
+    }
+
+    return [
+      'time_in' => $entered->format('Y-m-d H:i:s'),
+      'time_override' => 1,
+      'late_minutes' => $lateMinutes,
+    ];
+  }
+
+  return [
+    'time_in' => date('Y-m-d H:i:s'),
+    'time_override' => 0,
+    'late_minutes' => 0,
+  ];
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     $action = $_POST['action'] ?? '';
@@ -139,7 +187,7 @@ if ($action === 'load_students_by_assignment') {
         SELECT
             s.st_id AS ID,
 
-            ss.sectionID AS SecID,
+            ta.sectionID AS SecID,
 
             ta.assignment_id,
 
@@ -161,15 +209,15 @@ if ($action === 'load_students_by_assignment') {
         INNER JOIN section sec
             ON sec.sectionID = ta.sectionID
 
-        INNER JOIN student_section ss
-            ON ss.sectionID = ta.sectionID
+        INNER JOIN student_assignments sa
+            ON sa.assignment_id = ta.assignment_id
 
         INNER JOIN student s
-            ON s.st_id = ss.st_id
+            ON s.st_id = sa.st_id
 
         WHERE
             ta.assignment_id = ?
-            AND ss.ay_id = ?
+            AND sa.ay_id = ?
 
         ORDER BY
             s.st_lastname,
@@ -202,6 +250,7 @@ if ($action === 'load_existing') {
             attendance.st_id,
             attendance.status,
 			attendance.assignment_id,
+            attendance.time_in,
             student.st_lastname,
             student.st_name,
             student.st_middlename,
@@ -234,7 +283,6 @@ if ($action === 'load_existing') {
     $date    = $_POST['date'];
     $term    = $_POST['term'];
     $ayId    = current_ay_id($pdo);
-    $timeIn  = date('Y-m-d H:i:s');
 
     // Prevent duplicate attendance for same load/date/term
     if (!empty($records)) {
@@ -279,15 +327,24 @@ if ($action === 'load_existing') {
                 status,
                 term,
                 ay_id,
-                time_in
+                time_in,
+                time_override,
+                late_minutes
             )
             VALUES
             (
-                ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
         ");
 
         foreach ($records as $r) {
+            $attendanceTime = resolveAttendanceTimeIn(
+                $pdo,
+                (int)$r['assignment_id'],
+                $r['status'],
+                $r['time_in'] ?? null,
+                $date
+            );
 
             $ins->execute([
                 $r['st_id'],
@@ -297,7 +354,9 @@ if ($action === 'load_existing') {
                 $r['status'],
                 $term,
                 $ayId,
-                $timeIn
+                $attendanceTime['time_in'],
+                $attendanceTime['time_override'],
+                $attendanceTime['late_minutes']
             ]);
         }
 
@@ -335,7 +394,10 @@ if ($action === 'load_existing') {
 
         $upd = $pdo->prepare("
             UPDATE attendance
-            SET status = ?
+            SET status = ?,
+                time_in = ?,
+                time_override = ?,
+                late_minutes = ?
             WHERE st_id = ?
               AND assignment_id = ?
               AND _date = ?
@@ -343,8 +405,19 @@ if ($action === 'load_existing') {
         ");
 
         foreach ($records as $r) {
+            $attendanceTime = resolveAttendanceTimeIn(
+                $pdo,
+                (int)$r['assignment_id'],
+                $r['status'],
+                $r['time_in'] ?? null,
+                $date
+            );
+
             $upd->execute([
                 $r['status'],
+                $attendanceTime['time_in'],
+                $attendanceTime['time_override'],
+                $attendanceTime['late_minutes'],
                 $r['st_id'],
                 $r['assignment_id'],
                 $date,
@@ -557,8 +630,17 @@ function loadStudentsByAssignment() {
             if (existing.length > 0) {
                 // Merge saved statuses into the roster so the grid pre-fills correctly
                 const statusMap = {};
-                existing.forEach(e => { statusMap[e.st_id] = e.status; });
-                students.forEach(s => { s.status = statusMap[s.ID] || 'Absent'; });
+                existing.forEach(e => {
+                    statusMap[e.st_id] = {
+                        status: e.status,
+                        time_in: e.time_in
+                    };
+                });
+                students.forEach(s => {
+                    const saved = statusMap[s.ID];
+                    s.status = saved?.status || 'Absent';
+                    s.time_in = saved?.time_in || '';
+                });
 
                 renderGrid(students, true);
                 showToast('Existing attendance found. Update mode enabled.', 'info');
@@ -609,6 +691,12 @@ function checkExistingAttendance() {
   .then(r=>r.json()).then(data => renderGrid(data, false));
 }*/
 
+function attendanceTimeValue(timeIn) {
+  const value = String(timeIn || '');
+  const match = value.match(/(\d{2}:\d{2})(?::\d{2})?$/);
+  return match ? match[1] : '';
+}
+
 function renderGrid(data, editData) {
   attStudents = data;
   isEditMode  = !!editData;
@@ -630,7 +718,7 @@ function renderGrid(data, editData) {
         <th style="width:35px">#</th>
         <th>Full Name</th>
         <th style="width:100px">Section</th>
-        <th style="width:220px">Status</th>
+        <th style="width:240px">Status</th>
       </tr>
     </thead><tbody>`;
 
@@ -639,6 +727,8 @@ function renderGrid(data, editData) {
     const pChk = status==='Present' ? 'checked' : '';
     const aChk = status==='Absent'  ? 'checked' : '';
     const lChk = status==='Late'    ? 'checked' : '';
+    const savedTime = attendanceTimeValue(s.time_in);
+    const lateTimeClass = status === 'Late' ? '' : 'd-none';
 
     html += `<tr>
       <td class="text-muted">${i+1}</td>
@@ -646,13 +736,14 @@ function renderGrid(data, editData) {
       <td><span class="badge bg-secondary-subtle text-secondary border">${s.section}</span></td>
       <td>
         <div class="btn-group btn-group-sm" role="group">
-          <input type="radio" class="btn-check" name="st_${s.ID}" id="p_${s.ID}" value="Present" ${pChk}>
+          <input type="radio" class="btn-check" name="st_${s.ID}" id="p_${s.ID}" value="Present" ${pChk} onchange="toggleLateTime(${s.ID})">
           <label class="btn btn-outline-success" for="p_${s.ID}">Present</label>
-          <input type="radio" class="btn-check" name="st_${s.ID}" id="a_${s.ID}" value="Absent" ${aChk}>
+          <input type="radio" class="btn-check" name="st_${s.ID}" id="a_${s.ID}" value="Absent" ${aChk} onchange="toggleLateTime(${s.ID})">
           <label class="btn btn-outline-danger" for="a_${s.ID}">Absent</label>
-          <input type="radio" class="btn-check" name="st_${s.ID}" id="l_${s.ID}" value="Late" ${lChk}>
+          <input type="radio" class="btn-check" name="st_${s.ID}" id="l_${s.ID}" value="Late" ${lChk} onchange="toggleLateTime(${s.ID})">
           <label class="btn btn-outline-warning" for="l_${s.ID}">Late</label>
         </div>
+        <input type="time" class="form-control form-control-sm mt-2 late-time ${lateTimeClass}" id="time_${s.ID}" value="${savedTime}">
       </td>
     </tr>`;
   });
@@ -665,10 +756,25 @@ function renderGrid(data, editData) {
   document.getElementById('btnUpdate').classList.toggle('d-none', !isEditMode);
 }
 
+function toggleLateTime(studentId) {
+  const selected = document.querySelector(`input[name="st_${studentId}"]:checked`)?.value;
+  const timeInput = document.getElementById(`time_${studentId}`);
+
+  if (!timeInput) return;
+
+  timeInput.classList.toggle('d-none', selected !== 'Late');
+  if (selected !== 'Late') {
+    timeInput.value = '';
+  }
+}
+
 function selectAll(checked) {
   attStudents.forEach(s => {
     const el = document.getElementById(checked ? `p_${s.ID}` : `a_${s.ID}`);
-    if (el) el.checked = true;
+    if (el) {
+      el.checked = true;
+      toggleLateTime(s.ID);
+    }
   });
 }
 
@@ -676,7 +782,10 @@ function setAllStatus(status) {
   const prefix = {Present:'p', Absent:'a', Late:'l'}[status];
   attStudents.forEach(s => {
     const el = document.getElementById(`${prefix}_${s.ID}`);
-    if (el) el.checked = true;
+    if (el) {
+      el.checked = true;
+      toggleLateTime(s.ID);
+    }
   });
   document.getElementById('chkSelectAll').checked = (status === 'Present');
 }
@@ -684,7 +793,13 @@ function setAllStatus(status) {
 function getRecords() {
 
   return attStudents.map(
-    s => ({
+    s => {
+      const status = document.querySelector(
+        `input[name="st_${s.ID}"]:checked`
+      )?.value || 'Absent';
+      const timeInput = document.getElementById(`time_${s.ID}`);
+
+      return ({
       st_id:
         s.ID,
       sectionID:
@@ -692,10 +807,13 @@ function getRecords() {
       assignment_id:
         s.assignment_id,
       status:
-        document.querySelector(
-          `input[name="st_${s.ID}"]:checked`
-        )?.value || 'Absent'
-    })
+        status,
+      time_in:
+        status === 'Late'
+          ? (timeInput?.value || null)
+          : null
+      });
+    }
   );
 }
 

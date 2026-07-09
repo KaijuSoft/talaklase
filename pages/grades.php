@@ -20,15 +20,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sql = "SELECT s.st_id,
                         CONCAT(s.st_lastname,', ',s.st_name,' ',s.st_middlename,' ',s.st_suffix) AS FullName,
                         s.st_gender, e.score
-                    FROM student s
-                    INNER JOIN student_section ss ON ss.st_id=s.st_id
-                    LEFT JOIN class_record cr ON cr.st_id=s.st_id AND cr.sectionID=ss.sectionID AND cr.sub_id=:sub
+                    FROM teaching_assignments ta
+                    INNER JOIN student_assignments sa ON sa.assignment_id=ta.assignment_id
+                    INNER JOIN student s ON s.st_id=sa.st_id
+                    LEFT JOIN class_record cr ON cr.st_id=s.st_id AND cr.sectionID=ta.sectionID AND cr.sub_id=:sub
                     LEFT JOIN class_record_exam cre ON cre.rec_id=cr.rec_id AND cre.term=:term
                     LEFT JOIN exam e ON e.exam_id=cre.exam_id
-                    WHERE ss.sectionID=:sec
+                    WHERE ta.sectionID=:sec
+                      AND ta.sub_id=:sub
+                      AND ta.ay_id=:ay
+                      AND sa.ay_id=:ay
                     ORDER BY s.st_gender DESC, s.st_lastname ASC";
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([':sec'=>$sec,':sub'=>$sub,':term'=>$term]);
+            $stmt->execute([':sec'=>$sec,':sub'=>$sub,':term'=>$term,':ay'=>current_ay_id($pdo)]);
         } else {
             $map = [
                 'Participation' => ['tbl'=>'participation','cols'=>['par_one','par_two','par_three','par_four','par_five'],'jt'=>'class_record_participation','fk'=>'par_id'],
@@ -40,15 +44,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sql = "SELECT s.st_id,
                         CONCAT(s.st_lastname,', ',s.st_name,' ',s.st_middlename,' ',s.st_suffix) AS FullName,
                         s.st_gender, $colStr
-                    FROM student s
-                    INNER JOIN student_section ss ON ss.st_id=s.st_id
-                    LEFT JOIN class_record cr ON cr.st_id=s.st_id AND cr.sectionID=ss.sectionID AND cr.sub_id=:sub
+                    FROM teaching_assignments ta
+                    INNER JOIN student_assignments sa ON sa.assignment_id=ta.assignment_id
+                    INNER JOIN student s ON s.st_id=sa.st_id
+                    LEFT JOIN class_record cr ON cr.st_id=s.st_id AND cr.sectionID=ta.sectionID AND cr.sub_id=:sub
                     LEFT JOIN {$m['jt']} jt ON jt.rec_id=cr.rec_id AND jt.term=:term
                     LEFT JOIN {$m['tbl']} t ON t.{$m['fk']}=jt.{$m['fk']}
-                    WHERE ss.sectionID=:sec
+                    WHERE ta.sectionID=:sec
+                      AND ta.sub_id=:sub
+                      AND ta.ay_id=:ay
+                      AND sa.ay_id=:ay
                     ORDER BY s.st_gender DESC, s.st_lastname ASC";
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([':sec'=>$sec,':sub'=>$sub,':term'=>$term]);
+            $stmt->execute([':sec'=>$sec,':sub'=>$sub,':term'=>$term,':ay'=>current_ay_id($pdo)]);
         }
         echo json_encode($stmt->fetchAll());
         exit;
@@ -204,18 +212,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 (IFNULL(e.score,0) / NULLIF(IFNULL(es.score_max,0), 0)) * 100, 2
             ) AS Exam
 
-        FROM student s
-        INNER JOIN student_section ss_sec
-            ON ss_sec.st_id = s.st_id
+        FROM teaching_assignments ta
+        INNER JOIN student_assignments sa
+            ON sa.assignment_id = ta.assignment_id
+        INNER JOIN student s
+            ON s.st_id = sa.st_id
 
         LEFT JOIN attendance a
             ON a.st_id = s.st_id
-           AND a.sectionID = ss_sec.sectionID
+           AND a.sectionID = ta.sectionID
            AND a.term = :term
 
         LEFT JOIN class_record cr
             ON cr.st_id = s.st_id
-           AND cr.sectionID = ss_sec.sectionID
+           AND cr.sectionID = ta.sectionID
            AND cr.sub_id = :sub
 
         LEFT JOIN class_record_participation crp
@@ -253,7 +263,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         LEFT JOIN exam_settings es
             ON es.term = cre.term
 
-        WHERE ss_sec.sectionID = :sec
+        WHERE ta.sectionID = :sec
+          AND ta.sub_id = :sub
+          AND ta.ay_id = :ay
+          AND sa.ay_id = :ay
         GROUP BY s.st_id
         ORDER BY s.st_gender DESC, s.st_lastname ASC";
 
@@ -261,7 +274,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([
             ':sec'  => $sec,
             ':sub'  => $sub,
-            ':term' => $term
+            ':term' => $term,
+            ':ay'   => current_ay_id($pdo)
         ]);
 
         $rows = $stmt->fetchAll();

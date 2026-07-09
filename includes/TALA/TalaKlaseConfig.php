@@ -240,6 +240,94 @@ return [
 
     'type' => TalaEngine::TYPE_TRANSACTION,
 
-],
+	],
 
+	'exam' => [
+
+    'primary_key' => 'exam_id',
+
+    'business_key' => [
+        'term',
+        'date_created'
+    ],
+
+    'ignore' => [
+        'exam_id'
+    ],
+
+    'type' => TalaEngine::TYPE_REFERENCE,
+
+	],
+	
+	'written' => [
+
+    'primary_key' => 'written_id',
+
+    'business_key' => [
+        'term'
+    ],
+
+    'ignore' => [
+        'written_id'
+    ],
+
+    'type' => TalaEngine::TYPE_REFERENCE,
+
+	],
+	
+	'participation' => [
+
+    'primary_key' => 'par_id',
+
+    'business_key' => [
+        'term'
+    ],
+
+    'ignore' => [
+        'par_id'
+    ],
+
+    'type' => TalaEngine::TYPE_REFERENCE,
+
+	],
+	
+	'performance' => [
+
+    'primary_key' => 'perf_id',
+
+    'business_key' => [
+        'term'
+    ],
+
+    'ignore' => [
+        'perf_id'
+    ],
+
+    'type' => TalaEngine::TYPE_REFERENCE,
+
+	],
+	
+	'student_grades' => [
+
+    'primary_key' => 'id',
+
+    'business_key' => [
+        'student_id',
+        'subject_id',
+        'section_id',
+        'quarter'
+    ],
+
+    'ignore' => [
+        'id'
+    ],
+
+    'depends' => [
+        'student',
+        'subject'
+    ],
+
+    'type' => TalaEngine::TYPE_TRANSACTION,
+
+],
 ];

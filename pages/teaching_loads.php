@@ -13,6 +13,33 @@ require_permission('manage_teaching_loads');
 
 $pdo = getConnection();
 
+function normalizeTeachingLoadTime(?string $value): ?string {
+    $value = trim((string)$value);
+    return $value === '' ? null : $value;
+}
+
+function formatTeachingLoadTime(?string $value): string {
+    $value = trim((string)$value);
+    if ($value === '') {
+        return '';
+    }
+
+    $time = strtotime($value);
+    return $time !== false ? date('h:i A', $time) : '';
+}
+
+function validateTeachingLoadSchedule(?string $startTime, ?string $endTime): ?string {
+    if ($startTime === null || $endTime === null) {
+        return 'Please enter both a start time and an end time.';
+    }
+
+    if (strtotime($endTime) <= strtotime($startTime)) {
+        return 'End Time must be later than Start Time.';
+    }
+
+    return null;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!verify_csrf()) {
@@ -32,7 +59,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sectionID = (int)($_POST['sectionID'] ?? 0);
         $sub_id    = (int)($_POST['sub_id'] ?? 0);
         $inst_id   = (int)($_POST['inst_id'] ?? 0);
+        $startTime = normalizeTeachingLoadTime($_POST['start_time'] ?? null);
+        $endTime   = normalizeTeachingLoadTime($_POST['end_time'] ?? null);
 		$ayId = current_ay_id($pdo);
+
+        $validationMessage = validateTeachingLoadSchedule($startTime, $endTime);
+        if ($validationMessage !== null) {
+            echo json_encode([
+                'success' => false,
+                'message' => $validationMessage
+            ]);
+            exit;
+        }
 
         try {
 
@@ -42,11 +80,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     sectionID,
                     sub_id,
                     inst_id,
+                    start_time,
+                    end_time,
 					ay_Id
                 )
                 VALUES
                 (
-                    ?, ?, ?, ?
+                    ?, ?, ?, ?, ?, ?
                 )
             ");
 
@@ -54,6 +94,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $sectionID,
                 $sub_id,
                 $inst_id,
+                $startTime,
+                $endTime,
 				$ayId
             ]);
 
@@ -86,6 +128,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $inst_id =
         (int)($_POST['inst_id'] ?? 0);
+    $startTime = normalizeTeachingLoadTime($_POST['start_time'] ?? null);
+    $endTime   = normalizeTeachingLoadTime($_POST['end_time'] ?? null);
+
+    $validationMessage = validateTeachingLoadSchedule($startTime, $endTime);
+    if ($validationMessage !== null) {
+        echo json_encode([
+            'success' => false,
+            'message' => $validationMessage
+        ]);
+        exit;
+    }
 
     try {
 
@@ -94,7 +147,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             SET
                 sectionID = ?,
                 sub_id    = ?,
-                inst_id   = ?
+                inst_id   = ?,
+                start_time = ?,
+                end_time = ?
             WHERE assignment_id = ?
         ");
 
@@ -102,12 +157,83 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sectionID,
             $sub_id,
             $inst_id,
+            $startTime,
+            $endTime,
             $assignment_id
         ]);
 
         echo json_encode([
             'success' => true,
             'message' => 'Teaching load updated.'
+        ]);
+
+    } catch (Throwable $e) {
+
+        echo json_encode([
+            'success' => false,
+            'message' => $e->getMessage()
+        ]);
+    }
+
+    exit;
+}
+
+	if ($action === 'import_section_students') {
+
+    $assignment_id = (int)($_POST['assignment_id'] ?? 0);
+    $ayId = current_ay_id($pdo);
+
+    try {
+
+        $rosterStmt = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM student_section ss
+            INNER JOIN teaching_assignments ta
+                ON ta.sectionID = ss.sectionID
+            WHERE ta.assignment_id = ?
+              AND ss.ay_id = ?
+        ");
+        $rosterStmt->execute([$assignment_id, $ayId]);
+        $eligibleStudents = (int)$rosterStmt->fetchColumn();
+
+        $importStmt = $pdo->prepare("
+            INSERT INTO student_assignments
+            (
+                st_id,
+                assignment_id,
+                ay_id,
+                enrolled_at
+            )
+            SELECT
+                ss.st_id,
+                ta.assignment_id,
+                ?,
+                NOW()
+            FROM student_section ss
+            INNER JOIN teaching_assignments ta
+                ON ta.sectionID = ss.sectionID
+            LEFT JOIN student_assignments sa
+                ON sa.st_id = ss.st_id
+               AND sa.assignment_id = ta.assignment_id
+               AND sa.ay_id = ?
+            WHERE ta.assignment_id = ?
+              AND ss.ay_id = ?
+              AND sa.enrollment_id IS NULL
+        ");
+
+        $importStmt->execute([
+            $ayId,
+            $ayId,
+            $assignment_id,
+            $ayId
+        ]);
+
+        $imported = $importStmt->rowCount();
+        $skipped = max(0, $eligibleStudents - $imported);
+
+        echo json_encode([
+            'success' => true,
+            'message' => "Imported {$imported} students. Skipped {$skipped} already enrolled."
         ]);
 
     } catch (Throwable $e) {
@@ -173,12 +299,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 }
 
-		$loads = $pdo->query("
+$loads = $pdo->query("
 		SELECT
         ta.assignment_id,
         ta.sectionID,
         ta.sub_id,
         ta.inst_id,
+        ta.start_time,
+        ta.end_time,
         ta.is_active,
 
         s.section,
@@ -269,10 +397,13 @@ const csrfToken =
 
                 <tr>
 
-                    <th>Section</th>
-                    <th>Subject</th>
-                    <th>Instructor</th>
-                    <th>Status</th>
+            <th>Section</th>
+            <th>Subject</th>
+            <th>Instructor</th>
+            <th class="d-none d-lg-table-cell">Start</th>
+            <th class="d-none d-lg-table-cell">End</th>
+            <th class="d-lg-none">Schedule</th>
+            <th>Status</th>
 					<th>Actions</th>
 
                 </tr>
@@ -301,6 +432,22 @@ const csrfToken =
                         <?= htmlspecialchars($load['inst_name']) ?>
                     </td>
 
+                    <td class="d-none d-lg-table-cell">
+                        <?= htmlspecialchars(formatTeachingLoadTime($load['start_time'])) ?>
+                    </td>
+
+                    <td class="d-none d-lg-table-cell">
+                        <?= htmlspecialchars(formatTeachingLoadTime($load['end_time'])) ?>
+                    </td>
+
+                    <td class="d-lg-none">
+                        <?= htmlspecialchars(
+                            formatTeachingLoadTime($load['start_time']) && formatTeachingLoadTime($load['end_time'])
+                                ? formatTeachingLoadTime($load['start_time']) . ' - ' . formatTeachingLoadTime($load['end_time'])
+                                : ''
+                        ) ?>
+                    </td>
+
                     <td>
 
                         <?=
@@ -319,12 +466,22 @@ const csrfToken =
 					<?= (int)$load['assignment_id'] ?>,
 				<?= (int)$load['sectionID'] ?>,
 			<?= (int)$load['sub_id'] ?>,
-        <?= (int)$load['inst_id'] ?>
+        <?= (int)$load['inst_id'] ?>,
+        '<?= htmlspecialchars($load['start_time'] ?? '', ENT_QUOTES) ?>',
+        '<?= htmlspecialchars($load['end_time'] ?? '', ENT_QUOTES) ?>'
     )">
 
     Edit
 
 </button>
+
+                    <button
+                        class="btn btn-sm btn-outline-primary ms-1"
+                        onclick="importSectionStudents(<?= (int)$load['assignment_id'] ?>)">
+
+                        Import Section Students
+
+                    </button>
 
 </td>
 
@@ -443,6 +600,38 @@ const csrfToken =
 
     </div>
 
+    <div class="row g-2">
+
+        <div class="col-md-6 mb-3">
+
+            <label class="form-label">
+                Start Time
+            </label>
+
+            <input
+                type="time"
+                class="form-control"
+                id="add_start_time"
+                required>
+
+        </div>
+
+        <div class="col-md-6 mb-3">
+
+            <label class="form-label">
+                End Time
+            </label>
+
+            <input
+                type="time"
+                class="form-control"
+                id="add_end_time"
+                required>
+
+        </div>
+
+    </div>
+
 </div>
 
 <div class="modal-footer">
@@ -544,6 +733,38 @@ const csrfToken =
             class="form-select"
             id="edit_inst_id">
         </select>
+
+    </div>
+
+    <div class="row g-2">
+
+        <div class="col-md-6 mb-3">
+
+            <label class="form-label">
+                Start Time
+            </label>
+
+            <input
+                type="time"
+                class="form-control"
+                id="edit_start_time"
+                required>
+
+        </div>
+
+        <div class="col-md-6 mb-3">
+
+            <label class="form-label">
+                End Time
+            </label>
+
+            <input
+                type="time"
+                class="form-control"
+                id="edit_end_time"
+                required>
+
+        </div>
 
     </div>
 
@@ -829,6 +1050,20 @@ function saveLoad() {
     );
 
     params.append(
+        'start_time',
+        document.getElementById(
+            'add_start_time'
+        ).value
+    );
+
+    params.append(
+        'end_time',
+        document.getElementById(
+            'add_end_time'
+        ).value
+    );
+
+    params.append(
         'csrf_token',
         csrfToken
     );
@@ -895,6 +1130,20 @@ function updateLoad() {
     );
 
     params.append(
+        'start_time',
+        document.getElementById(
+            'edit_start_time'
+        ).value
+    );
+
+    params.append(
+        'end_time',
+        document.getElementById(
+            'edit_end_time'
+        ).value
+    );
+
+    params.append(
         'csrf_token',
         csrfToken
     );
@@ -938,6 +1187,8 @@ document.addEventListener(
         'shown.bs.modal',
         function () {
 
+            document.getElementById('add_start_time').value = '';
+            document.getElementById('add_end_time').value = '';
             loadSectionData();
 
         }
@@ -1020,12 +1271,19 @@ function loadEditInstructors(
     });
 
 }
+
+function loadEditSchedule(startTime, endTime) {
+    document.getElementById('edit_start_time').value = startTime || '';
+    document.getElementById('edit_end_time').value = endTime || '';
+}
 	
 function editLoad(
     assignmentId,
     sectionId,
     subId,
-    instId
+    instId,
+    startTime,
+    endTime
 ) {
 
     document.getElementById(
@@ -1046,6 +1304,8 @@ function editLoad(
     instId
 );
 
+    loadEditSchedule(startTime, endTime);
+
     const modal =
         new bootstrap.Modal(
             document.getElementById(
@@ -1057,6 +1317,32 @@ function editLoad(
 
 }
 
+function importSectionStudents(assignmentId) {
+    if (!confirm('Import all students from this section into the teaching assignment?')) {
+        return;
+    }
+
+    const params = new URLSearchParams();
+    params.append('action', 'import_section_students');
+    params.append('assignment_id', assignmentId);
+    params.append('csrf_token', csrfToken);
+
+    fetch(window.location.href, {
+        method: 'POST',
+        headers: {
+            'Content-Type':
+                'application/x-www-form-urlencoded'
+        },
+        body: params
+    })
+    .then(r => r.json())
+    .then(result => {
+        alert(result.message);
+        if (result.success) {
+            location.reload();
+        }
+    });
+}
 
 	
 </script>
