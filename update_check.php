@@ -8,6 +8,14 @@ header('Content-Type: application/json');
 
 $project_dir = __DIR__;
 
+function isDevelopmentUpdateMode(): bool {
+    $appEnv = getenv('APP_ENV') ?: ($_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? '');
+    $debug = getenv('DEBUG') ?: ($_ENV['DEBUG'] ?? $_SERVER['DEBUG'] ?? '');
+
+    return strtolower((string) $appEnv) === 'development'
+        || filter_var($debug, FILTER_VALIDATE_BOOLEAN);
+}
+
 function respond(array $data): void {
     echo json_encode($data);
     exit;
@@ -26,6 +34,32 @@ function hasGitError(string $text): bool {
         || strpos($lower, 'error') !== false
         || strpos($lower, 'not recognized') !== false
         || strpos($lower, 'not found') !== false;
+}
+
+if (!isDevelopmentUpdateMode()) {
+    require_once __DIR__ . '/ReleaseChecker.php';
+
+    $manifestUrl = getenv('TALAKLASE_RELEASE_MANIFEST_URL')
+        ?: 'https://github.com/SunriseRaven/talaklase/releases/latest/download/manifest.json';
+
+    try {
+        $release = (new ReleaseChecker($project_dir . '/version.json', $manifestUrl))->check();
+
+        respond($release + [
+            // Preserve the fields expected by the unchanged update banner.
+            'branch' => 'release',
+            'local_hash' => $release['current_version'],
+            'remote_hash' => $release['latest_version'],
+            'dirty' => false,
+            'dirty_message' => '',
+        ]);
+    } catch (RuntimeException $error) {
+        respond([
+            'status' => 'error',
+            'message' => $error->getMessage(),
+            'update_available' => false,
+        ]);
+    }
 }
 
 if (!function_exists('shell_exec')) {
