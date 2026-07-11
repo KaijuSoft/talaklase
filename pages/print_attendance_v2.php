@@ -5,11 +5,11 @@ require_permission('view_attendance');
 $pdo = getConnection();
 
 $loads = $pdo->query("
-SELECT
-    ta.assignment_id,
-    sec.section,
-    subj.sub_code,
-    i.inst_name
+    SELECT
+        ta.assignment_id,
+        sec.section,
+        subj.sub_code,
+        i.inst_name
 FROM teaching_assignments ta
 INNER JOIN section sec
     ON sec.sectionID = ta.sectionID
@@ -41,6 +41,7 @@ if ($filter_assignment) {
     $stmt = $pdo->prepare("
         SELECT
             student.st_id,
+            student.student_no,
             CONCAT(student.st_lastname, ', ', student.st_name, ' ', student.st_middlename, ' ', student.st_suffix) AS NAME,
             section.section AS Section,
             attendance.term AS Term,
@@ -152,6 +153,7 @@ if ($filter_assignment) {
             <tr>
               <th>#</th>
               <th>Student Name</th>
+              <th>Student No.</th>
               <th>Section</th>
               <th>Term</th>
               <th class="text-success">Present</th>
@@ -169,6 +171,7 @@ if ($filter_assignment) {
               <tr>
                 <td><?= $i + 1 ?></td>
                 <td><?= htmlspecialchars($r['NAME']) ?></td>
+                <td><?= htmlspecialchars($r['student_no']) ?></td>
                 <td><?= htmlspecialchars($r['Section']) ?></td>
                 <td><?= htmlspecialchars($r['Term']) ?></td>
                 <td class="text-center text-success fw-bold"><?= $r['Present'] ?></td>

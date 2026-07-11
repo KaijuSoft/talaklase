@@ -200,6 +200,57 @@ foreach ($this->syncOrder as $tableName) {
     {
         return $this->syncOrder;
     }
+
+    /**
+     * Runs the RC2 dry-run analysis pipeline without mutating either database.
+     *
+     * @return array<string, mixed>
+     */
+    public function analyzeSchema(): array
+    {
+        $session = (new EngineSession())
+            ->setSourceDatabase($this->describeConnection($this->source))
+            ->setDestinationDatabase($this->describeConnection($this->destination));
+
+        $health = $this->healthCheck();
+        $session->setHealth($health);
+
+        if (($health['status'] ?? false) !== true) {
+            $session->finish();
+
+            return array_merge([
+                'status' => false,
+                'stage' => 'health_check',
+            ], $session->toArray());
+        }
+
+        $sourceSnapshot = (new DatabaseSnapshot($this->source))->capture();
+        $destinationSnapshot = (new DatabaseSnapshot($this->destination))->capture();
+        $inspector = new SchemaInspector($this->source, $this->destination);
+        $merger = new SchemaMerger();
+        $validator = new MergeValidator();
+
+        $session
+            ->setSnapshot([
+                'source' => $sourceSnapshot,
+                'destination' => $destinationSnapshot,
+            ]);
+
+        $inspection = $inspector->inspect(array_keys($this->tables));
+        $session->setInspection($inspection);
+
+        $plan = $merger->buildPlan($inspection);
+        $session->setMergePlan($plan);
+
+        $validation = $validator->validate($plan);
+        $session
+            ->setValidation($validation)
+            ->setExecution([])
+            ->setVerification([])
+            ->finish();
+
+        return $session->toArray();
+    }
 	
 	public function healthCheck(): array
 {

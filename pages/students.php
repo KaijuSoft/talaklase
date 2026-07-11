@@ -44,6 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         try {
             $pdo->beginTransaction();
+            $studentNo = trim($_POST['student_no'] ?? '');
             // Duplicate check
             $chk = $pdo->prepare("SELECT COUNT(*) FROM student WHERE st_lastname=? AND st_name=? AND st_middlename=? AND st_suffix=? AND course_id=?");
             $chk->execute([
@@ -58,8 +59,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 echo json_encode(['success'=>false,'message'=>'Duplicate student record found.']);
                 exit;
             }
-            $ins = $pdo->prepare("INSERT INTO student (st_lastname,st_name,st_middlename,st_suffix,st_gender,course_id) VALUES (?,?,?,?,?,?)");
+            if ($studentNo !== '') {
+                $studentNoChk = $pdo->prepare("SELECT COUNT(*) FROM student WHERE student_no = ?");
+                $studentNoChk->execute([$studentNo]);
+                if ($studentNoChk->fetchColumn() > 0) {
+                    $pdo->rollBack();
+                    echo json_encode(['success'=>false,'message'=>'Student Number already exists.']);
+                    exit;
+                }
+            } else {
+                $studentNo = null;
+            }
+            $ins = $pdo->prepare("INSERT INTO student (student_no,st_lastname,st_name,st_middlename,st_suffix,st_gender,course_id) VALUES (?,?,?,?,?,?,?)");
             $ins->execute([
+                $studentNo,
                 ucwords(strtolower($_POST['lastname'])),
                 ucwords(strtolower($_POST['firstname'])),
                 ucwords(strtolower($_POST['middlename'])),
@@ -89,8 +102,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         try {
             $pdo->beginTransaction();
-            $upd = $pdo->prepare("UPDATE student SET st_lastname=?,st_name=?,st_middlename=?,st_suffix=?,st_gender=?,course_id=? WHERE st_id=?");
-            $upd->execute([$_POST['lastname'],$_POST['firstname'],$_POST['middlename'],$_POST['suffix'],$_POST['gender'],$_POST['course_id'],$_POST['st_id']]);
+            $studentNo = trim($_POST['student_no'] ?? '');
+            if ($studentNo !== '') {
+                $studentNoChk = $pdo->prepare("SELECT COUNT(*) FROM student WHERE student_no = ? AND st_id <> ?");
+                $studentNoChk->execute([$studentNo, $_POST['st_id']]);
+                if ($studentNoChk->fetchColumn() > 0) {
+                    $pdo->rollBack();
+                    echo json_encode(['success'=>false,'message'=>'Student Number already exists.']);
+                    exit;
+                }
+            } else {
+                $studentNo = null;
+            }
+            $upd = $pdo->prepare("UPDATE student SET student_no=?,st_lastname=?,st_name=?,st_middlename=?,st_suffix=?,st_gender=?,course_id=? WHERE st_id=?");
+            $upd->execute([$studentNo,$_POST['lastname'],$_POST['firstname'],$_POST['middlename'],$_POST['suffix'],$_POST['gender'],$_POST['course_id'],$_POST['st_id']]);
 			$ayId = current_ay_id($pdo);
 			$updSec = $pdo->prepare("UPDATE student_section SET sectionID=?,yearlvl=? WHERE st_id=? AND ay_id=?");
             $updSec->execute([$_POST['section_id'],$_POST['year_level'],$_POST['st_id'], $ayId]);
@@ -138,7 +163,7 @@ $whereParts = [];
 $params = [];
 
 if ($search !== '') {
-  $whereParts[] = "(student.st_lastname LIKE :q OR student.st_name LIKE :q OR student.st_middlename LIKE :q)";
+  $whereParts[] = "(student.student_no LIKE :q OR student.st_lastname LIKE :q OR student.st_name LIKE :q)";
   $params[':q'] = "%$search%";
 }
 
@@ -156,7 +181,7 @@ $totalRecords = $countStmt->fetchColumn();
 $totalPages   = max(1, ceil($totalRecords / $pageSize));
 $page         = min($page, $totalPages);
 
-$sql = "SELECT student.st_id, student.st_lastname, student.st_name, student.st_middlename,
+$sql = "SELECT student.st_id, student.student_no, student.st_lastname, student.st_name, student.st_middlename,
                student.st_suffix, student.st_gender, course.course_acronym,
                student_section.yearlvl, section.section
         FROM student
@@ -330,6 +355,7 @@ $genders  = ['Male','Female'];
       <thead>
         <tr>
           <th>#</th>
+          <th>Student No.</th>
           <th>Last Name</th>
           <th>First Name</th>
           <th>Middle Name</th>
@@ -343,10 +369,11 @@ $genders  = ['Male','Female'];
       </thead>
       <tbody>
         <?php if (empty($students)): ?>
-          <tr><td colspan="<?= can('edit_students') ? 10 : 9 ?>" class="text-center text-muted py-4"><i class="bi bi-inbox me-2"></i>No students found.</td></tr>
+          <tr><td colspan="<?= can('edit_students') ? 11 : 10 ?>" class="text-center text-muted py-4"><i class="bi bi-inbox me-2"></i>No students found.</td></tr>
         <?php else: foreach ($students as $i => $s): ?>
           <tr>
             <td class="text-muted"><?= $offset + $i + 1 ?></td>
+            <td><?= htmlspecialchars($s['student_no']) ?></td>
             <td><?= htmlspecialchars($s['st_lastname']) ?></td>
             <td><?= htmlspecialchars($s['st_name']) ?></td>
             <td><?= htmlspecialchars($s['st_middlename']) ?></td>
@@ -406,7 +433,8 @@ $genders  = ['Male','Female'];
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <div class="row g-3">
+          <div class="row g-3">
+          <div class="col-md-4"><label class="form-label">Student Number</label><input type="text" class="form-control" id="add_student_no"/></div>
           <div class="col-md-4"><label class="form-label">Last Name *</label><input type="text" class="form-control" id="add_lastname" required/></div>
           <div class="col-md-4"><label class="form-label">First Name *</label><input type="text" class="form-control" id="add_firstname" required/></div>
           <div class="col-md-3"><label class="form-label">Middle Name</label><input type="text" class="form-control" id="add_middlename"/></div>
@@ -460,6 +488,7 @@ $genders  = ['Male','Female'];
       <div class="modal-body">
         <input type="hidden" id="edit_id"/>
         <div class="row g-3">
+          <div class="col-md-4"><label class="form-label">Student Number</label><input type="text" class="form-control" id="edit_student_no"/></div>
           <div class="col-md-4"><label class="form-label">Last Name *</label><input type="text" class="form-control" id="edit_lastname"/></div>
           <div class="col-md-4"><label class="form-label">First Name *</label><input type="text" class="form-control" id="edit_firstname"/></div>
           <div class="col-md-3"><label class="form-label">Middle Name</label><input type="text" class="form-control" id="edit_middlename"/></div>
@@ -503,17 +532,17 @@ $genders  = ['Male','Female'];
 						<div class="alert alert-info mt-2">
     <strong>Excel Format:</strong><br>
 
-    Last Name | First Name | Middle Name |
-    Suffix | Gender | Course |
-    Section | Year Level
+    Student Number | Last Name | First Name |
+    Middle Name | Suffix | Gender |
+    Course | Year Level | Section
 
     <hr>
 
     Example:<br>
 
-    Dela Cruz | Juan | Santos |
-    | Male | BSIT |
-    Xiaomi | 1
+    2024-0001 | Dela Cruz | Juan |
+    Santos | | Male |
+    BSIT | 1 | Xiaomi
 </div>
             <form
                 method="post"
@@ -567,6 +596,7 @@ function saveStudent() {
   if (!canManageStudents) { showToast('You do not have permission to manage students.','danger'); return; }
   const data = {
     action:'add',
+    student_no: document.getElementById('add_student_no').value.trim(),
     lastname:  document.getElementById('add_lastname').value.trim(),
     firstname: document.getElementById('add_firstname').value.trim(),
     middlename:document.getElementById('add_middlename').value.trim(),
@@ -589,6 +619,7 @@ function saveStudent() {
 
 function openEdit(s) {
   document.getElementById('edit_id').value=s.st_id;
+  document.getElementById('edit_student_no').value=s.student_no || '';
   document.getElementById('edit_lastname').value=s.st_lastname;
   document.getElementById('edit_firstname').value=s.st_name;
   document.getElementById('edit_middlename').value=s.st_middlename;
@@ -606,6 +637,7 @@ function updateStudent() {
   const data = {
     action:'update',
     st_id:     document.getElementById('edit_id').value,
+    student_no: document.getElementById('edit_student_no').value.trim(),
     lastname:  document.getElementById('edit_lastname').value.trim(),
     firstname: document.getElementById('edit_firstname').value.trim(),
     middlename:document.getElementById('edit_middlename').value.trim(),

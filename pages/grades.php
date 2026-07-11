@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($comp === 'Exam') {
             $sql = "SELECT s.st_id,
+                        s.student_no,
                         CONCAT(s.st_lastname,', ',s.st_name,' ',s.st_middlename,' ',s.st_suffix) AS FullName,
                         s.st_gender, e.score
                     FROM teaching_assignments ta
@@ -42,6 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $m = $map[$comp];
             $colStr = implode(',', array_map(fn($c)=>"t.$c", $m['cols']));
             $sql = "SELECT s.st_id,
+                        s.student_no,
                         CONCAT(s.st_lastname,', ',s.st_name,' ',s.st_middlename,' ',s.st_suffix) AS FullName,
                         s.st_gender, $colStr
                     FROM teaching_assignments ta
@@ -177,6 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $sql = "SELECT
             s.st_id,
+            s.student_no,
             CONCAT(s.st_lastname,', ',s.st_name,' ',IFNULL(s.st_middlename,''),' ',IFNULL(s.st_suffix,'')) AS FullName,
             s.st_gender,
 
@@ -473,6 +476,7 @@ function renderGrid(data) {
     <thead class="table-light"><tr>
       <th style="width:35px">#</th>
       <th>Name</th>
+      <th style="width:120px">Student No.</th>
       <th style="width:80px">Gender</th>`;
 
   if (isExam) {
@@ -485,6 +489,7 @@ function renderGrid(data) {
   data.forEach((row, i) => {
     const g = row.st_gender==='Male' ? 'badge-gender-male' : 'badge-gender-female';
     html += `<tr><td class="text-muted">${i+1}</td><td>${row.FullName}</td>
+      <td>${row.student_no ?? ''}</td>
       <td><span class="badge ${g}">${row.st_gender}</span></td>`;
 
     if (isExam) {
@@ -592,6 +597,7 @@ function loadSummary() {
         if (!bucket[row.st_id]) {
           bucket[row.st_id] = {
             st_id: row.st_id,
+            student_no: row.student_no,
             FullName: row.FullName,
             st_gender: row.st_gender,
             Prelim: '',
@@ -645,7 +651,7 @@ function loadSummary() {
 
       html += `<tr>
         <td class="text-muted">${i+1}</td>
-        <td>${row.FullName}</td>
+        <td>${row.FullName}<div class="text-muted small">${row.student_no ? `Student No.: ${row.student_no}` : ''}</div></td>
         <td><span class="badge ${g}">${row.st_gender}</span></td>
         <td class="text-center">${prelim ?? ''}</td>
         <td class="text-center">${midterm ?? ''}</td>

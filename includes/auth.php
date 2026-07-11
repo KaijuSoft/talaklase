@@ -27,6 +27,8 @@ function page_permission(string $page): ?string {
         'view_attendance_v2' => 'view_attendance',
         'print_attendance_v2' => 'view_attendance',
         'grades' => 'view_grades',
+		'grades' => 'manage_grades',
+		'grades' => 'edit_grades',
         'score_settings' => 'manage_score_settings',
         'courses' => 'manage_courses',
         'departments' => 'manage_departments',
@@ -57,6 +59,7 @@ $PERMISSIONS = [
     'manage_score_settings', 
 	'manage_teaching_loads', 'manage_academic_years',
 	'manage_student_enrollment',
+	'manage_grades',
     ],
     'instructor_admin' => [
         'view_students',    'edit_students',
@@ -66,6 +69,7 @@ $PERMISSIONS = [
         'manage_sections',  'manage_subjects',
         'sync_settings',    'print_reports',
         'manage_score_settings',
+		'manage_grades',
     ],
    'instructor' => [
     'view_students',
@@ -76,7 +80,7 @@ $PERMISSIONS = [
 
     'view_grades',
     'edit_grades',
-
+	'manage_grades',
     'manage_subjects',
 
     'print_reports',

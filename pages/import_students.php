@@ -24,14 +24,15 @@ $errors = [];
 
 foreach ($rows as $row) {
 
-    $lastname   = trim($row[0] ?? '');
-    $firstname  = trim($row[1] ?? '');
-    $middlename = trim($row[2] ?? '');
-    $suffix     = trim($row[3] ?? '');
-    $gender     = trim($row[4] ?? '');
-    $course     = trim($row[5] ?? '');
-	$section 	= trim($row[6] ?? '');
+    $studentNo  = ($tmp = trim($row[0] ?? '')) === '' ? null : $tmp;
+    $lastname   = trim($row[1] ?? '');
+    $firstname  = trim($row[2] ?? '');
+    $middlename = trim($row[3] ?? '');
+    $suffix     = trim($row[4] ?? '');
+    $gender     = trim($row[5] ?? '');
+    $course     = trim($row[6] ?? '');
 	$yearlvl 	= (int)($row[7] ?? 0);
+	$section 	= trim($row[8] ?? '');
 
     if ($lastname === '' || $firstname === '') {
         $skipped++;
@@ -102,6 +103,25 @@ if ($yearlvl < 1 || $yearlvl > 4) {
 //}
 	
     // Duplicate check
+    if ($studentNo !== '') {
+        $studentNoCheck = $pdo->prepare("
+            SELECT st_id
+            FROM student
+            WHERE student_no = ?
+            LIMIT 1
+        ");
+        $studentNoCheck->execute([$studentNo]);
+        if ($studentNoCheck->fetch()) {
+            $errors[] =
+                "{$lastname}, {$firstname}: Student Number '{$studentNo}' already exists";
+
+            $skipped++;
+            continue;
+        }
+    } else {
+        $studentNo = null;
+    }
+
     $check = $pdo->prepare("
         SELECT st_id
         FROM student
@@ -131,6 +151,7 @@ $pdo->beginTransaction();
     // Insert student
     $insert = $pdo->prepare("
         INSERT INTO student (
+            student_no,
             st_lastname,
             st_name,
             st_middlename,
@@ -138,10 +159,11 @@ $pdo->beginTransaction();
             st_gender,
             course_id
         )
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     ");
 
     $insert->execute([
+        $studentNo,
         $lastname,
         $firstname,
         $middlename,

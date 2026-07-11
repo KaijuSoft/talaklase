@@ -186,6 +186,7 @@ if ($action === 'load_students_by_assignment') {
     $stmt = $pdo->prepare("
         SELECT
             s.st_id AS ID,
+            s.student_no,
 
             ta.sectionID AS SecID,
 
@@ -722,7 +723,7 @@ function renderGrid(data, editData) {
       </tr>
     </thead><tbody>`;
 
-  data.forEach((s, i) => {
+    data.forEach((s, i) => {
     const status = editData ? (s.status || 'Absent') : 'Present';
     const pChk = status==='Present' ? 'checked' : '';
     const aChk = status==='Absent'  ? 'checked' : '';
@@ -732,7 +733,10 @@ function renderGrid(data, editData) {
 
     html += `<tr>
       <td class="text-muted">${i+1}</td>
-      <td>${s.FullName}</td>
+      <td>
+        <div>${s.FullName}</div>
+        <div class="text-muted small">${s.student_no ? `Student No.: ${s.student_no}` : ''}</div>
+      </td>
       <td><span class="badge bg-secondary-subtle text-secondary border">${s.section}</span></td>
       <td>
         <div class="btn-group btn-group-sm" role="group">

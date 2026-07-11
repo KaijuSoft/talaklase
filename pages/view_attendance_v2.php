@@ -146,6 +146,7 @@ $whereStr = implode(' AND ', $where);
 // Present count × 3 = Total Hours
 $stmt = $pdo->prepare("SELECT
     student.st_id,
+    student.student_no,
     section.sectionID,
     CONCAT(student.st_lastname,', ',student.st_name,' ',student.st_middlename,' ',IF(student.st_suffix='','',student.st_suffix)) AS NAME,
     section.section AS Section,
@@ -325,10 +326,11 @@ LIMIT :limit OFFSET :offset");
     <div class="table-responsive">
       <table class="table table-hover table-bordered mb-0">
         <thead>
-          <tr>
-            <th>#</th>
-            <th>Name</th>
-            <th>Section</th>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Student No.</th>
+          <th>Section</th>
 			<th>Subject</th>
 			<th>Instructor</th>
             <th>Term</th>
@@ -359,9 +361,10 @@ LIMIT :limit OFFSET :offset");
               </td>
             </tr>
           <?php else: foreach ($records as $i => $r): ?>
-            <tr>
+          <tr>
               <td class="text-muted"><?= $offset + $i + 1 ?></td>
               <td><?= htmlspecialchars($r['NAME']) ?></td>
+              <td><?= htmlspecialchars($r['student_no']) ?></td>
               <td><?= htmlspecialchars($r['Section']) ?></td>
 			  <td><?= htmlspecialchars($r['Subject']) ?></td>
 				<td><?= htmlspecialchars($r['Instructor']) ?></td>
