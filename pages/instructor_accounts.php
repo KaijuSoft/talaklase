@@ -143,11 +143,11 @@ $rows = $pdo->query(
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div>
-      <h6 class="mb-1"><i class="bi bi-person-vcard-fill me-2 text-primary"></i>Instructor Accounts</h6>
-      <div class="text-muted small">Create login access for instructors. They can use the system like admin users, but cannot add instructor accounts.</div>
+      <h6 class="mb-1"><i class="bi bi-person-vcard-fill me-2 text-primary"></i>User Accounts</h6>
+      <div class="text-muted small">Create login access for Users. They can use the system like admin users, but cannot add other user accounts.</div>
     </div>
     <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addModal">
-      <i class="bi bi-plus-lg me-1"></i> Add Instructor Account
+      <i class="bi bi-plus-lg me-1"></i> Add User Account
     </button>
   </div>
   <div class="table-responsive">
@@ -165,7 +165,7 @@ $rows = $pdo->query(
       <tbody>
         <?php if (empty($rows)): ?>
           <tr>
-            <td colspan="5" class="text-center text-muted py-4">No instructor accounts found.</td>
+            <td colspan="5" class="text-center text-muted py-4">No User account/s found.</td>
           </tr>
         <?php else: ?>
           <?php foreach ($rows as $row): ?>
@@ -195,7 +195,7 @@ $rows = $pdo->query(
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Add Instructor Account</h5>
+        <h5 class="modal-title">Add User Account</h5>
         <button class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
@@ -216,7 +216,7 @@ $rows = $pdo->query(
     <label class="form-label">Role</label>
     <select class="form-select" id="add_role">
         <option value="instructor">Instructor</option>
-        <option value="instructor_admin">Instructor Admin</option>
+        <option value="admin">System Admin</option>
         <option value="viewer">Viewer</option>
     </select>
 </div>
@@ -241,7 +241,7 @@ $rows = $pdo->query(
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Edit Instructor Account</h5>
+        <h5 class="modal-title">Edit User Account</h5>
         <button class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">

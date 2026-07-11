@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $titles = [
   'students'=>'Student Records','attendance_v2'=>'Attendance','view_attendance_v2'=>'View Attendance',
   'print_attendance_v2'=>'Print Attendance','grades'=>'Grading Form','score_settings'=>'Score Settings',
-  'courses'=>'Courses','departments'=>'Departments','instructors'=>'Instructors','instructor_accounts'=>'Instructor Accounts',
+  'courses'=>'Courses','departments'=>'Departments','instructors'=>'Instructors','instructor_accounts'=>'User Accounts',
   'sections'=>'Sections','subjects'=>'Subjects','sync'=>'Smart Sync','db_backup' =>'Database Backup','teaching_loads' => 'Teaching Loads','academic_years' => 'Academic Years',
   'student_enrollment' => 'Enroll Student',
 ];

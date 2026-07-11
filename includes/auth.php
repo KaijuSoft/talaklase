@@ -23,6 +23,7 @@ function can_any(array $permissions): bool {
 function page_permission(string $page): ?string {
     $map = [
         'students' => 'view_students',
+        'students' => 'edit_students',
         'attendance_v2' => 'edit_attendance',
         'view_attendance_v2' => 'view_attendance',
         'print_attendance_v2' => 'view_attendance',
@@ -40,7 +41,8 @@ function page_permission(string $page): ?string {
 		'db_backup' => 'sync_settings',
 		'teaching_loads' => 'manage_teaching_loads',
 		'academic_years' => 'manage_academic_years',
-		'student_enrollment' => 'manage_student_enrollment'
+		'student_enrollment' => 'manage_student_enrollment',
+		'update_check' => 'manage_updates'
     ];
 
     return $map[$page] ?? null;
@@ -60,6 +62,7 @@ $PERMISSIONS = [
 	'manage_teaching_loads', 'manage_academic_years',
 	'manage_student_enrollment',
 	'manage_grades',
+	'manage_updates',
     ],
     'instructor_admin' => [
         'view_students',    'edit_students',
@@ -87,9 +90,9 @@ $PERMISSIONS = [
 ],
     'viewer' => [
         'view_students',
-        'view_attendance',
+        /*'view_attendance',
         'view_grades',
-        'print_reports',
+        'print_reports',*/
     ],
 ];
 

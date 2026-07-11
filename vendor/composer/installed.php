@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'juliusvendivil/talaklase_with_instructor',
-        'pretty_version' => '1.0.0+no-version-set',
-        'version' => '1.0.0.0',
-        'reference' => null,
+        'pretty_version' => 'dev-main',
+        'version' => 'dev-main',
+        'reference' => '65a99da5d646c7b6c71cf927849b9da204a4ce10',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -20,9 +20,9 @@
             'dev_requirement' => false,
         ),
         'juliusvendivil/talaklase_with_instructor' => array(
-            'pretty_version' => '1.0.0+no-version-set',
-            'version' => '1.0.0.0',
-            'reference' => null,
+            'pretty_version' => 'dev-main',
+            'version' => 'dev-main',
+            'reference' => '65a99da5d646c7b6c71cf927849b9da204a4ce10',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
