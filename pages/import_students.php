@@ -2,6 +2,7 @@
 session_start();
 require_once '../includes/db.php';
 require_once '../vendor/autoload.php';
+require_once '../includes/academic_year.php';
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -22,22 +23,37 @@ $imported = 0;
 $skipped = 0;
 $errors = [];
 
+$ayId = current_ay_id($pdo);
+
 foreach ($rows as $row) {
 
-    $studentNo  = ($tmp = trim($row[0] ?? '')) === '' ? null : $tmp;
-    $lastname   = trim($row[1] ?? '');
-    $firstname  = trim($row[2] ?? '');
-    $middlename = trim($row[3] ?? '');
-    $suffix     = trim($row[4] ?? '');
-    $gender     = trim($row[5] ?? '');
-    $course     = trim($row[6] ?? '');
-	$yearlvl 	= (int)($row[7] ?? 0);
-	$section 	= trim($row[8] ?? '');
 
-    if ($lastname === '' || $firstname === '') {
-        $skipped++;
-        continue;
-    }
+
+   $studentNo  = ($tmp = trim($row[0] ?? '')) === '' ? null : $tmp;
+
+	$lastname   = ucwords(strtolower(trim($row[1] ?? '')));
+	$firstname  = ucwords(strtolower(trim($row[2] ?? '')));
+	$middlename = ucwords(strtolower(trim($row[3] ?? '')));
+	$suffix     = ucwords(strtolower(trim($row[4] ?? '')));
+
+	$gender = ucfirst(strtolower(trim($row[5] ?? '')));
+	
+	$course     = trim($row[6] ?? '');
+	$yearlvl    = (int)($row[7] ?? 0);
+	$section    = trim($row[8] ?? '');
+
+    if (
+    $studentNo === null &&
+    $lastname === '' &&
+    $firstname === '' &&
+    $middlename === '' &&
+    $suffix === '' &&
+    $gender === '' &&
+    $course === '' &&
+    $section === ''
+	) {
+    continue;
+	}
 	
 if ($yearlvl < 1 || $yearlvl > 4) {
 
@@ -46,6 +62,7 @@ if ($yearlvl < 1 || $yearlvl > 4) {
 
     $skipped++;
     continue;
+	
 }
 	
 	//if (!in_array($yearlvl, [1,2,3,4], true)) {
@@ -75,6 +92,7 @@ if ($yearlvl < 1 || $yearlvl > 4) {
 
     $skipped++;
     continue;
+	
 }
 	
 	$sectionStmt = $pdo->prepare("
@@ -103,7 +121,7 @@ if ($yearlvl < 1 || $yearlvl > 4) {
 //}
 	
     // Duplicate check
-    if ($studentNo !== '') {
+    if ($studentNo !== null) {
         $studentNoCheck = $pdo->prepare("
             SELECT st_id
             FROM student
@@ -118,24 +136,27 @@ if ($yearlvl < 1 || $yearlvl > 4) {
             $skipped++;
             continue;
         }
-    } else {
-        $studentNo = null;
     }
 
     $check = $pdo->prepare("
-        SELECT st_id
-        FROM student
-        WHERE st_lastname = ?
+    SELECT st_id
+    FROM student
+    WHERE
+        st_lastname = ?
         AND st_name = ?
-        AND COALESCE(st_middlename,'') = ?
-        LIMIT 1
-    ");
+        AND st_middlename = ?
+        AND st_suffix = ?
+        AND course_id = ?
+    LIMIT 1
+");
 
-    $check->execute([
-        $lastname,
-        $firstname,
-        $middlename
-    ]);
+   $check->execute([
+    $lastname,
+    $firstname,
+    $middlename,
+    $suffix,
+    $courseId
+]);
 
    if ($check->fetch()) {
 
@@ -172,21 +193,25 @@ $pdo->beginTransaction();
         $courseId
     ]);
 	$stId = $pdo->lastInsertId();
-	
-	$secInsert = $pdo->prepare("
+
+
+
+$secInsert = $pdo->prepare("
     INSERT INTO student_section
     (
         st_id,
         sectionID,
-        yearlvl
+        yearlvl,
+        ay_id
     )
-    VALUES (?, ?, ?)
+    VALUES (?, ?, ?, ?)
 ");
 
 $secInsert->execute([
     $stId,
     $sectionId,
-    $yearlvl
+    $yearlvl,
+    $ayId
 ]);
 	
     $imported++;
@@ -206,7 +231,6 @@ $_SESSION['import_errors'] = $errors;
 
 $_SESSION['import_success'] =
     "Imported {$imported} students. Skipped {$skipped} rows.";
-	
 
 header('Location: ../index.php?page=students');
 exit;
