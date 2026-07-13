@@ -25,13 +25,27 @@ final class SchemaMerger
             foreach ($tableResult['differences'] ?? [] as $difference) {
                 $action = (string) ($difference['type'] ?? '');
 
-                $planned = match ($action) {
-                    'missing_source_table', 'missing_destination_table' => $this->planMissingTable($tableName),
-                    'missing_column' => $this->planMissingColumn($tableName, $difference),
-                    'column_type', 'column_nullable', 'column_default' => $this->planColumnDifference($tableName, $difference),
-                    'missing_index' => $this->planMissingIndex($tableName, $difference),
-                    default => null,
-                };
+               $planned = match ($action) {
+
+    'missing_destination_table'
+        => $this->planMissingDestinationTable($tableName),
+
+    'missing_source_table'
+        => $this->planMissingSourceTable($tableName),
+
+    'missing_column'
+        => $this->planMissingColumn($tableName, $difference),
+
+    'column_type',
+    'column_nullable',
+    'column_default'
+        => $this->planColumnDifference($tableName, $difference),
+
+    'missing_index'
+        => $this->planMissingIndex($tableName, $difference),
+
+    default => null,
+};
 
                 if ($planned !== null) {
                     $operations[] = $planned;
@@ -50,13 +64,24 @@ final class SchemaMerger
     /**
      * @return array<string, mixed>
      */
-    private function planMissingTable(string $table): array
-    {
-        return [
-            'action' => 'create_table',
-            'table' => $table,
-        ];
-    }
+    private function planMissingDestinationTable(string $table): array
+{
+    return [
+        'action' => 'create_table',
+
+        'table' => $table,
+
+        'safe' => true,
+
+        'reason' => 'Table exists in source but not destination.',
+		
+    ];
+}
+
+	private function planMissingSourceTable(string $table): ?array
+{
+    return null;
+}
 
     /**
      * @param array<string, mixed> $difference
