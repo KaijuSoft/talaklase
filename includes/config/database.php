@@ -41,7 +41,7 @@ return [
         'host' => 'sql12.freesqldatabase.com',
         'port' => 3306,
 
-        'database' => 'talaklasedb',
+        'database' => 'sql12817970',
 
         'username' => 'sql12817970',
 
