@@ -10,15 +10,21 @@ use PDO;
 final class SchemaExecutor
 {
     
-    private PDO $destination;
+    private PDO $source;
+
+	private PDO $destination;
 
     /**
      * Constructor.
      */
-    public function __construct(PDO $destination)
-    {
-        $this->destination = $destination;
-    }
+   public function __construct(
+		PDO $source,
+		PDO $destination
+	)
+	{
+		$this->source = $source;
+		$this->destination = $destination;
+	}
 
     /**
      * Execute a validated merge plan.
@@ -114,6 +120,111 @@ private function executeCreateIndex(array $operation): array
         $operation,
         'CREATE INDEX execution not implemented (RC2.9.2)'
     );
+}
+
+
+private function getCreateTableStatement(string $table): ?string
+{
+    $stmt = $this->source->prepare(
+        "SHOW CREATE TABLE `{$table}`"
+    );
+
+    $stmt->execute();
+
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$result) {
+        return null;
+    }
+
+    return $result['Create Table'] ?? null;
+}
+
+private function normalizeCreateTableSql(string $sql): string
+{
+    // Remove AUTO_INCREMENT value
+    $sql = preg_replace(
+        '/AUTO_INCREMENT=\d+\s*/i',
+        '',
+        $sql
+    );
+
+    // Normalize line endings
+    $sql = str_replace("\r\n", "\n", $sql);
+
+    // Trim whitespace
+    return trim($sql);
+}
+
+private function executeSql(
+    array $operation,
+    string $sql
+): array
+{
+    $start = microtime(true);
+
+    try {
+
+        $this->destination->exec($sql);
+
+        return [
+
+            'action' => $operation['action'] ?? 'unknown',
+
+            'table' => $operation['table'] ?? null,
+
+            'column' => $operation['column'] ?? null,
+
+            'index' => $operation['index'] ?? null,
+
+            'sql' => $sql,
+
+            'status' => 'success',
+
+            'reason' => 'Executed successfully.',
+
+            'error' => null,
+
+            'executed' => true,
+
+            'started_at' => date('Y-m-d H:i:s'),
+
+            'duration_ms' => round(
+                (microtime(true) - $start) * 1000,
+                3
+            )
+        ];
+
+    } catch (\Throwable $e) {
+
+        return [
+
+            'action' => $operation['action'] ?? 'unknown',
+
+            'table' => $operation['table'] ?? null,
+
+            'column' => $operation['column'] ?? null,
+
+            'index' => $operation['index'] ?? null,
+
+            'sql' => $sql,
+
+            'status' => 'failed',
+
+            'reason' => 'SQL execution failed.',
+
+            'error' => $e->getMessage(),
+
+            'executed' => false,
+
+            'started_at' => date('Y-m-d H:i:s'),
+
+            'duration_ms' => round(
+                (microtime(true) - $start) * 1000,
+                3
+            )
+        ];
+    }
 }
 
 private function skipOperation(

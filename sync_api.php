@@ -14,6 +14,13 @@ define('LOCAL_DSN',   "mysql:host=127.0.0.1;port=3306;dbname=talaklasedb;charset
 define('LOCAL_USER',  "root");
 define('LOCAL_PASS',  "");
 
+/* define('ONLINE_DSN',  "mysql:host=gateway01.ap-southeast-1.prod.aws.tidbcloud.com;port=4000;dbname=talaklasedb;charset=utf8mb4");
+define('ONLINE_USER', "43PYUCXNx91RQ8v.root");
+define('ONLINE_PASS', "kxfO6GgjbTi7fbbH");
+define('LOCAL_DSN',   "mysql:host=127.0.0.1;port=3306;dbname=talaklasedb;charset=utf8mb4");
+define('LOCAL_USER',  "root");
+define('LOCAL_PASS',  ""); */
+
 $pdoOpts = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,

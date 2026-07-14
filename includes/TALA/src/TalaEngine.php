@@ -215,14 +215,14 @@ foreach ($this->syncOrder as $tableName) {
         $health = $this->healthCheck();
         $session->setHealth($health);
 
-        if (($health['status'] ?? false) !== true) {
+        /* if (($health['status'] ?? false) !== true) {
             $session->finish();
 
             return array_merge([
                 'status' => false,
                 'stage' => 'health_check',
             ], $session->toArray());
-        }
+        } */
 
         $sourceSnapshot = (new DatabaseSnapshot($this->source))->capture();
         $destinationSnapshot = (new DatabaseSnapshot($this->destination))->capture();
@@ -237,6 +237,10 @@ foreach ($this->syncOrder as $tableName) {
             ]);
 
         $inspection = $inspector->inspect(array_keys($this->tables));
+		echo "<pre>";
+print_r($inspection);
+echo "</pre>";
+exit;
         $session->setInspection($inspection);
 
         $plan = $merger->buildPlan($inspection);

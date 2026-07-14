@@ -1,15 +1,18 @@
 <?php
 // TalaKlase - Database Connection
-// Tries online DB first, falls back to local
+// Reads connection settings from config/database.php
 
-function getConnection(): PDO {
-    $onlineDSN = "mysql:host=sql12.freesqldatabase.com;port=3306;dbname=sql12817970;charset=utf8";
-    $onlineUser = "sql12817970";
-    $onlinePass = "N9dIfCwPRj";
+$config = require __DIR__ . '/config/database.php';
 
-    $localDSN = "mysql:host=127.0.0.1;port=3306;dbname=talaklasedb;charset=utf8";
-    $localUser = "root";
-    $localPass = "";
+function buildPDO(array $cfg): PDO
+{
+    $dsn = sprintf(
+        "mysql:host=%s;port=%d;dbname=%s;charset=%s",
+        $cfg['host'],
+        $cfg['port'],
+        $cfg['database'],
+        $cfg['charset'] ?? 'utf8mb4'
+    );
 
     $options = [
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
@@ -17,49 +20,65 @@ function getConnection(): PDO {
         PDO::ATTR_TIMEOUT            => 5,
     ];
 
-    try {
-        $pdo = new PDO($onlineDSN, $onlineUser, $onlinePass, $options);
-        $_SESSION['db_source'] = 'Online Database';
-        return $pdo;
-    } catch (PDOException $e) {
-        try {
-            $pdo = new PDO($localDSN, $localUser, $localPass, $options);
-            $_SESSION['db_source'] = 'Local Database';
-            return $pdo;
-        } catch (PDOException $e2) {
-            die(json_encode(['error' => 'Both databases unavailable: ' . $e2->getMessage()]));
-        }
+    // SSL Support (TiDB, etc.)
+    if (!empty($cfg['ssl'])) {
+        $options[PDO::MYSQL_ATTR_SSL_CA] = $cfg['ssl_ca'];
     }
-}
-
-
-function getLocalConnection(): PDO
-{
-    $dsn = "mysql:host=127.0.0.1;port=3306;dbname=talaklasedb;charset=utf8";
 
     return new PDO(
         $dsn,
-        "root",
-        "",
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        ]
+        $cfg['username'],
+        $cfg['password'],
+        $options
     );
+}
+
+function getConnection(): PDO
+{
+    global $config;
+
+    try {
+        $pdo = buildPDO($config['online']);
+
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION['db_source'] = 'Online Database';
+        }
+
+        return $pdo;
+
+    } catch (PDOException $e) {
+
+        try {
+
+            $pdo = buildPDO($config['local']);
+
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                $_SESSION['db_source'] = 'Local Database';
+            }
+
+            return $pdo;
+
+        } catch (PDOException $e2) {
+
+            die(json_encode([
+                'error' => 'Both databases unavailable: ' . $e2->getMessage()
+            ]));
+
+        }
+
+    }
+}
+
+function getLocalConnection(): PDO
+{
+    global $config;
+
+    return buildPDO($config['local']);
 }
 
 function getOnlineConnection(): PDO
 {
-    $dsn = "mysql:host=sql12.freesqldatabase.com;port=3306;dbname=sql12817970;charset=utf8";
+    global $config;
 
-    return new PDO(
-        $dsn,
-        "sql12817970",
-        "N9dIfCwPRj",
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        ]
-    );
+    return buildPDO($config['online']);
 }
-
