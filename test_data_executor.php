@@ -10,7 +10,7 @@ echo "Before constructor<br>";
 $plan = [
 
     [
-        'operation' => 'update',
+        'operation' => 'delete',
 
         'table' => 'student',
 

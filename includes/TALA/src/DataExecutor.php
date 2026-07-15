@@ -130,12 +130,33 @@ else {
             'values' => $sql['values']
 
         ];
+	}
+		
+		break;
+		
+		case 'delete':
+
+    $sql = $this->buildDeleteSQL($operation);
+
+    if ($this->dryRun) {
+
+        $result['operations'][] = [
+
+            'mode' => 'DRY RUN',
+
+            'sql' => $sql['sql'],
+
+            'values' => $sql['values']
+
+        ];
+		
+		
 
     } else {
 
         try {
 
-            $this->executeUpdate($sql);
+            $this->executeDelete($sql);
 
             $result['executed']++;
 
@@ -256,6 +277,28 @@ private function buildUpdateSQL(array $operation): array
 
     ];
 }
+
+/**
+ * Build a parameterized DELETE statement.
+ */
+private function buildDeleteSQL(array $operation): array
+{
+    $table = $operation['table'];
+    $primaryKey = $operation['primary_key'];
+
+    return [
+
+        'sql' =>
+            "DELETE FROM `{$table}` WHERE `{$primaryKey}` = ?",
+
+        'values' => [
+
+            $operation['data'][$primaryKey]
+
+        ]
+
+    ];
+}
 	
 	/**
 	* Execute an INSERT operation.
@@ -267,8 +310,15 @@ private function buildUpdateSQL(array $operation): array
 	}
 	
 	private function executeUpdate(array $sql): void
-{
+	{
     $statement = $this->pdo->prepare($sql['sql']);
     $statement->execute($sql['values']);
-}
+	}
+
+	private function executeDelete(array $sql): void
+	{
+    $statement = $this->pdo->prepare($sql['sql']);
+    $statement->execute($sql['values']);
+	}
+
 }
