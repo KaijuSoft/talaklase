@@ -3,68 +3,124 @@
 namespace Tala\Engine;
 
 use PDO;
-use PDOException;
 
 class DataExecutor
 {
     private PDO $pdo;
     private array $plan;
+	private bool $dryRun;
 
-    public function __construct(PDO $pdo, array $plan)
-    {
-        $this->pdo = $pdo;
-        $this->plan = $plan;
-    }
+   public function __construct(
+		PDO $pdo,
+		array $plan,
+		bool $dryRun = true
+		)
+	{
+		$this->pdo = $pdo;
+		$this->plan = $plan;
+		$this->dryRun = $dryRun;
+	}
+    /**
+     * Execute the synchronization plan.
+     */
+   public function execute(): array
+	{
+    $result = [
 
-    public function execute(): array
-    {
-        $result = [
+        'status' => true,
 
-            'status' => true,
+        'executed' => 0,
 
-            'executed' => 0,
+        'failed' => 0,
 
-            'failed' => 0,
+        'skipped' => 0,
 
-            'skipped' => 0,
+        'operations' => []
 
-            'operations' => []
+    ];
 
-        ];
+    foreach ($this->plan as $operation) {
 
-        foreach ($this->plan['operations'] as $operation) {
+        switch ($operation['operation']) {
 
-            switch ($operation['operation']) {
+            case 'insert':
 
-                case 'insert':
+                $sql = $this->buildInsertSQL($operation);
 
-                    $this->insert($operation);
+if ($this->dryRun) {
 
-                    $result['executed']++;
+    $result['operations'][] = [
 
-                    break;
+        'mode' => 'DRY RUN',
 
-                case 'update':
+        'sql' => $sql['sql'],
 
-                    $result['skipped']++;
+        'values' => $sql['values']
 
-                    break;
+    ];
 
-                case 'delete':
+}
+else {
 
-                    $result['skipped']++;
+    // Live execution will be added later.
 
-                    break;
+    $result['operations'][] = [
 
-            }
+        'mode' => 'LIVE',
 
+        'sql' => $sql['sql'],
+
+        'values' => $sql['values']
+
+    ];
+
+}
+
+                break;
+
+            case 'update':
+
+                $result['skipped']++;
+
+                break;
+
+            case 'delete':
+
+                $result['skipped']++;
+
+                break;
         }
-
-        return $result;
     }
 
-    private function insert(array $operation): void
-    {
+    return $result;
+}
 
-    }
+
+/**
+ * Build a parameterized INSERT statement.
+ */
+	public function buildInsertSQL(array $operation): array
+	{
+		$table = $operation['table'];
+		$data = $operation['data'];
+
+		$columns = array_keys($data);
+
+		$placeholders = array_fill(0, count($columns), '?');
+
+		$sql =
+			"INSERT INTO `{$table}` (`" .
+			implode('`,`', $columns) .
+			"`) VALUES (" .
+			implode(',', $placeholders) .
+			")";
+
+		return [
+
+			'sql' => $sql,
+
+			'values' => array_values($data)
+
+		];
+	}
 }
