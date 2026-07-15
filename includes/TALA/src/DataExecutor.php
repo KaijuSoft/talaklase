@@ -38,7 +38,11 @@ class DataExecutor
         'operations' => []
 
     ];
-
+	
+	if (!$this->dryRun) {
+    $this->pdo->beginTransaction();
+	}
+	
     foreach ($this->plan as $operation) {
 
         switch ($operation['operation']) {
@@ -82,6 +86,10 @@ else {
 
     }
     catch (\PDOException $e) {
+		
+		if (!$this->dryRun && $this->pdo->inTransaction()) {
+    $this->pdo->rollBack();
+	}
 
         $result['failed']++;
 
@@ -100,7 +108,7 @@ else {
             'values' => $sql['values']
 
         ];
-
+			return $result;
     }
 
 }
@@ -120,7 +128,11 @@ else {
                 break;
         }
     }
-
+	
+	if (!$this->dryRun && $result['status']) {
+    $this->pdo->commit();
+	}
+	
     return $result;
 }
 
