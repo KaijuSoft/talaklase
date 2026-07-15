@@ -62,17 +62,46 @@ if ($this->dryRun) {
 }
 else {
 
-    // Live execution will be added later.
+    try {
 
-    $result['operations'][] = [
+        $this->executeInsert($sql);
 
-        'mode' => 'LIVE',
+        $result['executed']++;
 
-        'sql' => $sql['sql'],
+        $result['operations'][] = [
 
-        'values' => $sql['values']
+            'mode' => 'LIVE',
 
-    ];
+            'status' => 'SUCCESS',
+
+            'sql' => $sql['sql'],
+
+            'values' => $sql['values']
+
+        ];
+
+    }
+    catch (\PDOException $e) {
+
+        $result['failed']++;
+
+        $result['status'] = false;
+
+        $result['operations'][] = [
+
+            'mode' => 'LIVE',
+
+            'status' => 'FAILED',
+
+            'error' => $e->getMessage(),
+
+            'sql' => $sql['sql'],
+
+            'values' => $sql['values']
+
+        ];
+
+    }
 
 }
 
@@ -122,5 +151,14 @@ else {
 			'values' => array_values($data)
 
 		];
+	}
+	
+	/**
+	* Execute an INSERT operation.
+	*/
+	private function executeInsert(array $sql): void
+	{
+		$statement = $this->pdo->prepare($sql['sql']);
+		$statement->execute($sql['values']);
 	}
 }
