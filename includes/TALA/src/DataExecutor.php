@@ -113,19 +113,72 @@ else {
 
 }
 
-                break;
+     break;
 
-            case 'update':
+           case 'update':
 
-                $result['skipped']++;
+    $sql = $this->buildUpdateSQL($operation);
 
-                break;
+    if ($this->dryRun) {
 
-            case 'delete':
+        $result['operations'][] = [
 
-                $result['skipped']++;
+            'mode' => 'DRY RUN',
 
-                break;
+            'sql' => $sql['sql'],
+
+            'values' => $sql['values']
+
+        ];
+
+    } else {
+
+        try {
+
+            $this->executeUpdate($sql);
+
+            $result['executed']++;
+
+            $result['operations'][] = [
+
+                'mode' => 'LIVE',
+
+                'status' => 'SUCCESS',
+
+                'sql' => $sql['sql'],
+
+                'values' => $sql['values']
+
+            ];
+
+        } catch (\PDOException $e) {
+
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+
+            $result['failed']++;
+            $result['status'] = false;
+
+            $result['operations'][] = [
+
+                'mode' => 'LIVE',
+
+                'status' => 'FAILED',
+
+                'error' => $e->getMessage(),
+
+                'sql' => $sql['sql'],
+
+                'values' => $sql['values']
+
+            ];
+
+            return $result;
+        }
+    }
+
+    break;
         }
     }
 	
@@ -165,6 +218,45 @@ else {
 		];
 	}
 	
+	
+	/**
+ * Build a parameterized UPDATE statement.
+ */
+private function buildUpdateSQL(array $operation): array
+{
+    $table = $operation['table'];
+    $data = $operation['data'];
+    $primaryKey = $operation['primary_key'];
+
+    $columns = [];
+
+    $values = [];
+
+    foreach ($data as $column => $value) {
+
+        if ($column === $primaryKey) {
+            continue;
+        }
+
+        $columns[] = "`{$column}` = ?";
+
+        $values[] = $value;
+    }
+
+    $values[] = $data[$primaryKey];
+
+    return [
+
+        'sql' =>
+            "UPDATE `{$table}` SET " .
+            implode(', ', $columns) .
+            " WHERE `{$primaryKey}` = ?",
+
+        'values' => $values
+
+    ];
+}
+	
 	/**
 	* Execute an INSERT operation.
 	*/
@@ -173,4 +265,10 @@ else {
 		$statement = $this->pdo->prepare($sql['sql']);
 		$statement->execute($sql['values']);
 	}
+	
+	private function executeUpdate(array $sql): void
+{
+    $statement = $this->pdo->prepare($sql['sql']);
+    $statement->execute($sql['values']);
+}
 }

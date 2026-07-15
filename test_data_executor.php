@@ -10,69 +10,34 @@ echo "Before constructor<br>";
 $plan = [
 
     [
-
-        'operation' => 'insert',
+        'operation' => 'update',
 
         'table' => 'student',
 
-        'primary_key' => 1000,
+        'primary_key' => 'st_id',
 
         'data' => [
 
-            'st_id' => 1000,
-
-            'student_no' => 'TEST-1000',
-
-            'st_lastname' => 'Rollback',
-
-            'st_name' => 'First',
-
-            'st_middlename' => '',
-
-            'st_suffix' => '',
-
-            'st_gender' => 'Male',
-
-            'course_id' => 1,
-
-            'student_status' => 'Active'
-
-        ]
-
-    ],
-
-	 [
-        'operation' => 'insert',
-        'table' => 'student',
-        'primary_key' => 1001,
-        'data' => [
-            'st_id' => 1001,
-            'student_no' => 'TEST-1001',
-            'st_lastname' => 'Rollback',
-            'st_name' => 'Second',
-            'st_middlename' => '',
-            'st_suffix' => '',
-            'st_gender' => 'Male',
-            'course_id' => 1,
-            'student_status' => 'Active'
-        ]
-    ], 
-	
-	[
-        'operation' => 'insert',
-        'table' => 'student',
-        'primary_key' => 999,
-        'data' => [
             'st_id' => 999,
+
             'student_no' => 'TEST-0001',
-            'st_lastname' => 'Executor',
-            'st_name' => 'Test',
+
+            'st_lastname' => 'Vendivil',
+
+            'st_name' => 'Julius',
+
             'st_middlename' => '',
+
             'st_suffix' => '',
+
             'st_gender' => 'Male',
-            'course_id' => 1,
+
+            'course_id' => 999999,
+
             'student_status' => 'Active'
+
         ]
+
     ]
 
 ];
@@ -83,6 +48,9 @@ $executor = new DataExecutor(
 	false
 );
 
+$result = $executor->execute();
+
+print_r($result);
 echo "After constructor<br>";
 
 echo "<pre>";
