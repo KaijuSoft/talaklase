@@ -63,6 +63,7 @@ switch ($result['status']) {
         break;
 }
 		  
+		  
         }
 
         return [
@@ -100,9 +101,75 @@ private function executeOperation(array $operation): array
 
 private function executeCreateTable(array $operation): array
 {
-    return $this->skipOperation(
+    $table = $operation['table'] ?? null;
+
+    if ($table === null) {
+
+        return [
+
+            'action' => 'create_table',
+
+            'table' => null,
+
+            'column' => null,
+
+            'index' => null,
+
+            'sql' => null,
+
+            'status' => 'failed',
+
+            'reason' => 'Missing table name.',
+
+            'error' => null,
+
+            'executed' => false,
+
+            'started_at' => date('Y-m-d H:i:s'),
+
+            'duration_ms' => 0
+
+        ];
+
+    }
+
+    $sql = $this->getCreateTableStatement($table);
+
+    if ($sql === null) {
+
+        return [
+
+            'action' => 'create_table',
+
+            'table' => $table,
+
+            'column' => null,
+
+            'index' => null,
+
+            'sql' => null,
+
+            'status' => 'failed',
+
+            'reason' => 'Unable to retrieve CREATE TABLE statement.',
+
+            'error' => null,
+
+            'executed' => false,
+
+            'started_at' => date('Y-m-d H:i:s'),
+
+            'duration_ms' => 0
+
+        ];
+
+    }
+
+    $sql = $this->normalizeCreateTableSql($sql);
+
+    return $this->executeSql(
         $operation,
-        'CREATE TABLE execution not implemented (RC2.9.2)'
+        $sql
     );
 }
 
@@ -165,7 +232,13 @@ private function executeSql(
 
     try {
 
-        $this->destination->exec($sql);
+        $this->destination->beginTransaction();
+
+		$this->destination->exec($sql);
+
+if ($this->destination->inTransaction()) {
+    $this->destination->commit();
+}
 
         return [
 
@@ -196,6 +269,10 @@ private function executeSql(
         ];
 
     } catch (\Throwable $e) {
+		
+		if ($this->destination->inTransaction()) {
+		$this->destination->rollBack();
+	}
 
         return [
 

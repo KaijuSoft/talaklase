@@ -412,14 +412,14 @@ Archived
 </div>
 
 
-/* <script>
+ <script>
 window.CrudConfig = {
-	pkField: <?= json_encode($config['pk'] ?>
-	field: <?= json_encode(array_column($config['fields'], 'name')) ?>\
+	pkField: <?= json_encode($config['pk']) ?>
+	field: <?= json_encode(array_column($config['fields'], 'name')) ?>
 };
 </script>
 
-<script src="assets/js/core/crud-page.js"></script> */
+<script src="assets/js/core/crud-page.js"></script>
 
 <script>
 const pkField = '<?= $config['pk'] ?>';

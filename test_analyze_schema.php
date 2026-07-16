@@ -4,25 +4,50 @@ require_once __DIR__ . '/includes/TALA/bootstrap.php';
 require_once __DIR__ . '/includes/db.php';
 
 use Tala\Engine\TalaEngine;
+use Tala\Engine\SchemaInspector;
+use Tala\Engine\SchemaMerger;
+use Tala\Engine\MergeValidator;
+use Tala\Engine\SchemaExecutor;
 
-$tables = require __DIR__ . '/includes/TALA/TalaKlaseConfig.php';
-
-$engine = new TalaEngine(
+$inspector = new SchemaInspector(
     getLocalConnection(),
-    getOnlineConnection(),
-    $tables
+    getOnlineConnection()
 );
 
+$inspection = [
+
+    'status' => false,
+
+    'tables' => [
+
+        $inspector->compareTable('tala_executor_test')
+
+    ]
+
+];
+
+$merger = new SchemaMerger();
+
+$plan = $merger->buildPlan($inspection);
+
+$validator = new MergeValidator();
+
+$validation = $validator->validate($plan);
+
+if (!$validation['valid']) {
+
+    die("Validation failed");
+
+}
+
+$executor = new SchemaExecutor(
+    getLocalConnection(),
+    getOnlineConnection()
+);
+
+$result = $executor->execute($plan);
+
 echo "<pre>";
-
-$result = $engine->analyzeSchema();
-
 print_r($result);
-
 echo "</pre>";
 
-$session->setInspection($inspection);
-
-echo "<pre>";
-print_r($inspection);
-exit;

@@ -237,21 +237,25 @@ foreach ($this->syncOrder as $tableName) {
             ]);
 
         $inspection = $inspector->inspect(array_keys($this->tables));
-		echo "<pre>";
-print_r($inspection);
-echo "</pre>";
-exit;
+		
         $session->setInspection($inspection);
 
         $plan = $merger->buildPlan($inspection);
         $session->setMergePlan($plan);
 
         $validation = $validator->validate($plan);
-        $session
-            ->setValidation($validation)
-            ->setExecution([])
-            ->setVerification([])
-            ->finish();
+       $executor = new SchemaExecutor(
+		$this->source,
+		$this->destination
+	);
+
+		$execution = $executor->execute($plan);
+
+		$session
+		->setValidation($validation)
+		->setExecution($execution)
+		->setVerification([])
+		->finish();
 
         return $session->toArray();
     }

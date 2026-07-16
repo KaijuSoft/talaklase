@@ -32,7 +32,7 @@ $plan = [
 
             'st_gender' => 'Male',
 
-            'course_id' => 999999,
+            'course_id' => 1,
 
             'student_status' => 'Active'
 

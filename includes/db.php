@@ -2,7 +2,8 @@
 // TalaKlase - Database Connection
 // Reads connection settings from config/database.php
 
-$config = require __DIR__ . '/config/database.php';
+$dbconfig = require __DIR__ . '/config/database.php';
+
 
 function buildPDO(array $cfg): PDO
 {
@@ -35,10 +36,12 @@ function buildPDO(array $cfg): PDO
 
 function getConnection(): PDO
 {
-    global $config;
+	global $dbconfig, $config;
+	
+    global $dbconfig;
 
     try {
-        $pdo = buildPDO($config['online']);
+        $pdo = buildPDO($dbconfig['online']);
 
         if (session_status() === PHP_SESSION_ACTIVE) {
             $_SESSION['db_source'] = 'Online Database';
@@ -50,7 +53,7 @@ function getConnection(): PDO
 
         try {
 
-            $pdo = buildPDO($config['local']);
+            $pdo = buildPDO($dbconfig['local']);
 
             if (session_status() === PHP_SESSION_ACTIVE) {
                 $_SESSION['db_source'] = 'Local Database';
@@ -71,14 +74,14 @@ function getConnection(): PDO
 
 function getLocalConnection(): PDO
 {
-    global $config;
+    global $dbconfig;
 
-    return buildPDO($config['local']);
+    return buildPDO($dbconfig['local']);
 }
 
 function getOnlineConnection(): PDO
 {
-    global $config;
+    global $dbconfig;
 
-    return buildPDO($config['online']);
+    return buildPDO($dbconfig['online']);
 }

@@ -328,6 +328,16 @@ return [
     ],
 
     'type' => TalaEngine::TYPE_TRANSACTION,
+	
+	],
+	
+	'tala_executor_test' => [
+
+    'type' => TalaEngine::TYPE_REFERENCE,
+
+    'primary_key' => 'id'
+
+],
 
 ],
 ];
