@@ -337,7 +337,5 @@ return [
 
     'primary_key' => 'id'
 
-],
-
-],
+	],
 ];
