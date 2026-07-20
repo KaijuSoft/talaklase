@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tala\Engine;
 
-final class MergeValidator
+final class PlanValidator
 {
     /**
      * Validate a merge plan.
@@ -38,6 +38,8 @@ final class MergeValidator
     }
 
     /**
+     * Validate a single operation.
+     *
      * @param array<string,mixed> $operation
      * @param array<string,mixed> $validated
      */
@@ -46,26 +48,57 @@ final class MergeValidator
         array &$validated
     ): bool {
 
-        if (empty($operation['operation'])) {
-            $validated['errors'][] = 'Operation type is missing.';
-            return false;
-        }
-
-        if (empty($operation['target'])) {
-            $validated['errors'][] = 'Operation target is missing.';
-            return false;
-        }
-
-        if (empty($operation['category'])) {
-            $validated['errors'][] = 'Operation category is missing.';
-            return false;
-        }
-
-        if (!isset($operation['details']) || !is_array($operation['details'])) {
-            $validated['errors'][] = 'Operation details are missing.';
-            return false;
-        }
-
-        return true;
+      return
+    $this->validateOperationType($operation, $validated)
+    && $this->validateTarget($operation, $validated)
+    && $this->validateCategory($operation, $validated);
     }
+	
+	private function validateOperationType(
+		array $operation,
+		array &$validated
+	): bool {
+
+    if (empty($operation['operation'])) {
+
+        $validated['errors'][] =
+            'Operation type is missing.';
+
+        return false;
+    }
+
+    return true;
+}
+
+	private function validateTarget(
+		array $operation,
+		array &$validated
+	): bool {
+
+		if (empty($operation['target'])) {
+
+			$validated['errors'][] =
+				'Operation target is missing.';
+
+			return false;
+		}
+
+		return true;
+}
+
+	private function validateCategory(
+		array $operation,
+		array &$validated
+	): bool {
+
+		if (empty($operation['category'])) {
+
+			$validated['errors'][] =
+				'Operation category is missing.';
+
+			return false;
+		}
+
+		return true;
+	}
 }

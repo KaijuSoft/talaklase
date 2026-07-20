@@ -64,63 +64,105 @@ final class SchemaMerger
     /**
      * @return array<string, mixed>
      */
-    private function planMissingDestinationTable(string $table): array
-{
-    return [
-        'action' => 'create_table',
-
-        'table' => $table,
-
-        'safe' => true,
-
-        'reason' => 'Table exists in source but not destination.',
-		
-    ];
-}
+	private function planMissingDestinationTable(string $table): array
+	{
+		return $this->createOperation(
+			'create_table',
+			$table,
+			[
+				'table' => $table,
+			],
+			true,
+			'Table exists in source but not destination.'
+		);
+	}
 
 	private function planMissingSourceTable(string $table): ?array
-{
+	{
     return null;
-}
+	}
 
     /**
      * @param array<string, mixed> $difference
      * @return array<string, mixed>
      */
     private function planMissingColumn(string $table, array $difference): array
-    {
-        return [
-            'action' => 'add_column',
-            'table' => $table,
-            'column' => (string) ($difference['column'] ?? ''),
-        ];
-    }
+	{
+    return $this->createOperation(
+			'add_column',
+			"{$table}.{$difference['column']}",
+			[
+				'table' => $table,
+				'column' => (string)($difference['column'] ?? ''),
+			]
+		);
+	}
 
     /**
      * @param array<string, mixed> $difference
      * @return array<string, mixed>
      */
-    private function planColumnDifference(string $table, array $difference): array
-    {
-        return [
-            'action' => 'modify_column',
-            'table' => $table,
-            'column' => (string) ($difference['column'] ?? ''),
-            'source_type' => $difference['source'] ?? null,
-            'destination_type' => $difference['destination'] ?? null,
-        ];
-    }
+   private function planColumnDifference(string $table, array $difference): array
+	{
+		return $this->createOperation(
+			'modify_column',
+			"{$table}.{$difference['column']}",
+			[
+				'table' => $table,
+				'column' => (string)($difference['column'] ?? ''),
+				'source_type' => $difference['source'] ?? null,
+				'destination_type' => $difference['destination'] ?? null,
+			]
+		);
+	}
 
     /**
      * @param array<string, mixed> $difference
      * @return array<string, mixed>
      */
     private function planMissingIndex(string $table, array $difference): array
-    {
-        return [
-            'action' => 'create_index',
-            'table' => $table,
-            'index' => (string) ($difference['index'] ?? ''),
-        ];
-    }
+	{
+		return $this->createOperation(
+			'create_index',
+			"{$table}.{$difference['index']}",
+			[
+				'table' => $table,
+				'index' => (string)($difference['index'] ?? ''),
+			]
+		);
+	}
+	
+	/**
+ * Creates a standardized merge operation.
+ *
+ * @param string $operation
+ * @param string $target
+ * @param array<string,mixed> $details
+ * @param bool $safe
+ * @param string|null $reason
+ *
+ * @return array<string,mixed>
+ */
+	private function createOperation(
+		string $operation,
+		string $target,
+		array $details = [],
+		bool $safe = true,
+		?string $reason = null
+	): array
+	{
+		return [
+			'category' => 'schema',
+
+			'operation' => $operation,
+
+			'target' => $target,
+
+			'details' => $details,
+
+			'safe' => $safe,
+
+			'reason' => $reason,
+		];
+	}
 }

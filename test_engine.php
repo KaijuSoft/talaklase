@@ -24,3 +24,11 @@ echo "<h3>Resolved Synchronization Order</h3>";
 echo "<pre>";
 print_r($engine->getSyncOrder());
 echo "</pre>";
+echo "<hr>";
+echo "<h3>Schema Analysis (RC2 Pipeline)</h3>";
+
+$result = $engine->analyzeSchema();
+
+echo "<pre>";
+print_r($result);
+echo "</pre>";

@@ -229,36 +229,36 @@ foreach ($this->syncOrder as $tableName) {
         $inspector = new SchemaInspector($this->source, $this->destination);
         $merger = new SchemaMerger();
         $validator = new MergeValidator();
+		$planValidator = new PlanValidator();
+		$planBuilder = new ExecutionPlanBuilder();
 
+		
         $session
             ->setSnapshot([
                 'source' => $sourceSnapshot,
                 'destination' => $destinationSnapshot,
             ]);
 
-        $inspection = $inspector->inspect(array_keys($this->tables));
-		
-        $session->setInspection($inspection);
+		$inspection = $inspector->inspect(array_keys($this->tables));
+		$session->setInspection($inspection);
 
-        $plan = $merger->buildPlan($inspection);
-        $session->setMergePlan($plan);
+		$mergePlan = $merger->buildPlan($inspection);
+		$session->setMergePlan($mergePlan);
 
-        $validation = $validator->validate($plan);
-       $executor = new SchemaExecutor(
-		$this->source,
-		$this->destination
-	);
+		$validatedPlan = $validator->validate($mergePlan);
+		$validatedPlan = $planValidator->validate($validatedPlan);
 
-		$execution = $executor->execute($plan);
+		$executionPlan = $planBuilder->build($validatedPlan);
 
 		$session
-		->setValidation($validation)
-		->setExecution($execution)
-		->setVerification([])
-		->finish();
+			->setValidation($validatedPlan)
+			->setExecution($executionPlan)
+			->setVerification([])
+			->finish();
 
-        return $session->toArray();
-    }
+				return $session->toArray();
+				
+			}
 	
 	public function healthCheck(): array
 {

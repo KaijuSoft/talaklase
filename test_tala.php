@@ -16,3 +16,10 @@ $engine = new TalaEngine(
 echo '<pre>';
 print_r($engine->healthCheck());
 echo '</pre>';
+echo "<pre>";
+
+$builder = new \Tala\Engine\ExecutionPlanBuilder();
+
+print_r($builder->build([]));
+
+echo "</pre>";
