@@ -56,18 +56,33 @@ final class SchemaInspector
         $sourceExists = $this->tableExists($this->source, $table);
         $destinationExists = $this->tableExists($this->destination, $table);
 
-        if (!$sourceExists || !$destinationExists) {
-            return [
-                'table' => $table,
-                'status' => false,
-                'differences' => [
-                    [
-                        'type' => !$sourceExists ? 'missing_source_table' : 'missing_destination_table',
-                        'table' => $table,
-                    ],
-                ],
-            ];
-        }
+       if (!$sourceExists || !$destinationExists) {
+
+		$difference = [
+			'type' => !$sourceExists
+				? 'missing_source_table'
+				: 'missing_destination_table',
+
+			'table' => $table,
+		];
+
+		if ($sourceExists && !$destinationExists) {
+
+			$difference['definition'] =
+				$this->fetchTableDefinition(
+					$this->source,
+					$table
+				);
+		}
+
+		return [
+			'table' => $table,
+			'status' => false,
+			'differences' => [
+				$difference
+			],
+		];
+	}
 
         $sourceColumns = $this->fetchColumns($this->source, $table);
         $destinationColumns = $this->fetchColumns($this->destination, $table);
@@ -161,6 +176,99 @@ final class SchemaInspector
 
         return $indexes;
     }
+	
+	/**
+ * Returns table engine, charset and collation.
+ *
+ * @return array<string,mixed>
+ */
+	public function fetchTableOptions(PDO $pdo, string $table): array
+	{
+		$statement = $pdo->prepare("
+			SELECT
+				ENGINE,
+				TABLE_COLLATION
+			FROM information_schema.TABLES
+			WHERE TABLE_SCHEMA = DATABASE()
+			  AND TABLE_NAME = ?
+		");
+
+		$statement->execute([$table]);
+
+		$row = $statement->fetch(PDO::FETCH_ASSOC);
+
+		if (!$row) {
+			return [];
+		}
+
+		$collation = (string)($row['TABLE_COLLATION'] ?? '');
+
+		$charset = null;
+
+		if ($collation !== '') {
+			$parts = explode('_', $collation, 2);
+			$charset = $parts[0];
+		}
+
+		return [
+			'engine' => $row['ENGINE'] ?? null,
+			'charset' => $charset,
+			'collation' => $collation,
+		];
+	}
+	
+	/**
+ * Returns the original CREATE TABLE statement.
+ */
+	public function fetchCreateTableSQL(PDO $pdo, string $table): string
+	{
+		$statement = $pdo->query(
+			"SHOW CREATE TABLE `{$table}`"
+		);
+
+		$row = $statement->fetch(PDO::FETCH_ASSOC);
+
+		if (!$row) {
+			throw new \RuntimeException(
+				"Unable to read CREATE TABLE for {$table}."
+			);
+		}
+
+		return (string)$row['Create Table'];
+	}
+	
+	/**
+ * Returns the complete table definition.
+ *
+ * @return array<string,mixed>
+ */
+	public function fetchTableDefinition(PDO $pdo, string $table): array
+	{
+		return [
+
+			'table' => $table,
+
+			'columns' => $this->fetchColumns(
+				$pdo,
+				$table
+			),
+
+			'indexes' => $this->fetchIndexes(
+				$pdo,
+				$table
+			),
+
+			...$this->fetchTableOptions(
+				$pdo,
+				$table
+			),
+
+			'create_sql' => $this->fetchCreateTableSQL(
+				$pdo,
+				$table
+			),
+		];
+	}
 
     /**
      * @param array<string, array<string, mixed>> $sourceColumns
