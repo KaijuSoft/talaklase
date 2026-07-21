@@ -14,12 +14,12 @@ echo "<pre>";
 echo "Class exists: ";
 var_dump(class_exists(SchemaExecutor::class));
 
-$source = getLocalConnection();
-$destination = getOnlineConnection();
+$source = getOnlineConnection();
+$destination = getLocalConnection();
 
 echo "Before constructor\n";
 
-$pdo = getLocalConnection();
+$pdo = getOnlineConnection();
 
 echo "Database: " . $pdo->query("SELECT DATABASE()")->fetchColumn() . "<br>";
 
@@ -27,7 +27,7 @@ echo "<pre>";
 print_r($pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN));
 echo "</pre>";
 
-$stmt = $pdo->query("SHOW CREATE TABLE `student`");
+$stmt = $pdo->query("SHOW CREATE TABLE `tala_executor_test`");
 
 echo "<pre>";
 print_r($stmt->fetch(PDO::FETCH_ASSOC));
@@ -42,34 +42,24 @@ echo "After constructor\n";
 
 echo "<h3>SHOW CREATE TABLE Test</h3>";
 
-$reflection = new ReflectionClass($executor);
+$stmt = $source->query("SHOW CREATE TABLE `tala_executor_test`");
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-$method = $reflection->getMethod('getCreateTableStatement');
+$sql = $row['Create Table'];
 
-$method->setAccessible(true);
-
-$sql = $method->invoke($executor, 'student');
-
-$reflection = new ReflectionClass($executor);
-
-$normalize = $reflection->getMethod('normalizeCreateTableSql');
-$normalize->setAccessible(true);
-
-$sql = $normalize->invoke($executor, $sql);
+$result = $executor->execute([
+    'operations' => [
+        [
+            'operation' => 'create_table',
+            'target'    => 'tala_executor_test',
+            'sql'       => $sql
+        ]
+    ]
+]);
 
 echo "<pre>";
-echo $sql;
+print_r($result);
 echo "</pre>";
 
-print_r(
-    $executor->execute([
-        'operations' => [
-            [
-                'action' => 'create_table',
-                'table'  => 'student'
-            ]
-        ]
-    ])
-);
 
 echo "</pre>";

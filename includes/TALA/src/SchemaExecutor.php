@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tala\Engine;
 
 use PDO;
+use Tala\Engine\Handlers\CreateTableHandler;
 
 
 final class SchemaExecutor
@@ -13,6 +14,17 @@ final class SchemaExecutor
     private PDO $source;
 
 	private PDO $destination;
+	
+	/**
+ * Registered operation handlers.
+ *
+ * @var array<string,string>
+ */
+private array $handlers = [
+
+    'create_table' => CreateTableHandler::class,
+
+];
 
     /**
      * Constructor.
@@ -50,7 +62,8 @@ final class SchemaExecutor
 $results[] = $result;
 
 switch ($result['status']) {
-    case 'success':
+
+    case 'executed':
         $executed++;
         break;
 
@@ -60,7 +73,6 @@ switch ($result['status']) {
 
     default:
         $skipped++;
-        break;
 }
 		  
 		  
@@ -81,97 +93,28 @@ switch ($result['status']) {
     }
 
 
-private function executeOperation(array $operation): array
-{
-    return match ($operation['action'] ?? '') {
+	private function executeOperation(array $operation): array
+	{
+		$operationType = $operation['operation'] ?? '';
 
-        'create_table'
-            => $this->executeCreateTable($operation),
+		if (!isset($this->handlers[$operationType])) {
 
-        'add_column'
-            => $this->executeAddColumn($operation),
+			return $this->skipOperation(
+				$operation,
+				"No handler registered for '{$operationType}'."
+			);
 
-        'create_index'
-            => $this->executeCreateIndex($operation),
+		}
 
-        default
-            => $this->skipOperation($operation),
-    };
-}
+		$handlerClass = $this->handlers[$operationType];
 
-private function executeCreateTable(array $operation): array
-{
-    $table = $operation['table'] ?? null;
+		$handler = new $handlerClass(
+			$this->source,
+			$this->destination
+		);
 
-    if ($table === null) {
-
-        return [
-
-            'action' => 'create_table',
-
-            'table' => null,
-
-            'column' => null,
-
-            'index' => null,
-
-            'sql' => null,
-
-            'status' => 'failed',
-
-            'reason' => 'Missing table name.',
-
-            'error' => null,
-
-            'executed' => false,
-
-            'started_at' => date('Y-m-d H:i:s'),
-
-            'duration_ms' => 0
-
-        ];
-
-    }
-
-    $sql = $this->getCreateTableStatement($table);
-
-    if ($sql === null) {
-
-        return [
-
-            'action' => 'create_table',
-
-            'table' => $table,
-
-            'column' => null,
-
-            'index' => null,
-
-            'sql' => null,
-
-            'status' => 'failed',
-
-            'reason' => 'Unable to retrieve CREATE TABLE statement.',
-
-            'error' => null,
-
-            'executed' => false,
-
-            'started_at' => date('Y-m-d H:i:s'),
-
-            'duration_ms' => 0
-
-        ];
-
-    }
-
-    $sql = $this->normalizeCreateTableSql($sql);
-
-    return $this->executeSql(
-        $operation,
-        $sql
-    );
-}
+		return $handler->execute($operation);
+	}
 
 private function executeAddColumn(array $operation): array
 {
@@ -179,129 +122,6 @@ private function executeAddColumn(array $operation): array
         $operation,
         'ADD COLUMN execution not implemented (RC2.9.2)'
     );
-}
-
-private function executeCreateIndex(array $operation): array
-{
-    return $this->skipOperation(
-        $operation,
-        'CREATE INDEX execution not implemented (RC2.9.2)'
-    );
-}
-
-
-private function getCreateTableStatement(string $table): ?string
-{
-    $stmt = $this->source->prepare(
-        "SHOW CREATE TABLE `{$table}`"
-    );
-
-    $stmt->execute();
-
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$result) {
-        return null;
-    }
-
-    return $result['Create Table'] ?? null;
-}
-
-private function normalizeCreateTableSql(string $sql): string
-{
-    // Remove AUTO_INCREMENT value
-    $sql = preg_replace(
-        '/AUTO_INCREMENT=\d+\s*/i',
-        '',
-        $sql
-    );
-
-    // Normalize line endings
-    $sql = str_replace("\r\n", "\n", $sql);
-
-    // Trim whitespace
-    return trim($sql);
-}
-
-private function executeSql(
-    array $operation,
-    string $sql
-): array
-{
-    $start = microtime(true);
-
-    try {
-
-        $this->destination->beginTransaction();
-
-		$this->destination->exec($sql);
-
-if ($this->destination->inTransaction()) {
-    $this->destination->commit();
-}
-
-        return [
-
-            'action' => $operation['action'] ?? 'unknown',
-
-            'table' => $operation['table'] ?? null,
-
-            'column' => $operation['column'] ?? null,
-
-            'index' => $operation['index'] ?? null,
-
-            'sql' => $sql,
-
-            'status' => 'success',
-
-            'reason' => 'Executed successfully.',
-
-            'error' => null,
-
-            'executed' => true,
-
-            'started_at' => date('Y-m-d H:i:s'),
-
-            'duration_ms' => round(
-                (microtime(true) - $start) * 1000,
-                3
-            )
-        ];
-
-    } catch (\Throwable $e) {
-		
-		if ($this->destination->inTransaction()) {
-		$this->destination->rollBack();
-	}
-
-        return [
-
-            'action' => $operation['action'] ?? 'unknown',
-
-            'table' => $operation['table'] ?? null,
-
-            'column' => $operation['column'] ?? null,
-
-            'index' => $operation['index'] ?? null,
-
-            'sql' => $sql,
-
-            'status' => 'failed',
-
-            'reason' => 'SQL execution failed.',
-
-            'error' => $e->getMessage(),
-
-            'executed' => false,
-
-            'started_at' => date('Y-m-d H:i:s'),
-
-            'duration_ms' => round(
-                (microtime(true) - $start) * 1000,
-                3
-            )
-        ];
-    }
 }
 
 private function skipOperation(
@@ -313,7 +133,7 @@ private function skipOperation(
 
     return [
 
-        'action' => $operation['action'] ?? 'unknown',
+        'operation' => $operation['operation'] ?? 'unknown',
 
         'table' => $operation['table'] ?? null,
 
