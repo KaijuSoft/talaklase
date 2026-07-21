@@ -2,15 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Tala\Engine\Handlers;
+namespace Tala\Engine\Contracts;
+
+use Tala\Engine\Enums\OperationType;
 
 interface OperationHandlerInterface
 {
     /**
-     * Execute a single schema operation.
-     *
-     * @param array $operation
-     * @return array
+     * Executes a single operation.
+     */
+    public function execute(array $operation): array;
+
+    /**
+     * Returns the supported operation type.
      */
     public static function operation(): OperationType;
 }
