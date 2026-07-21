@@ -75,26 +75,42 @@ public function build(array $validatedPlan): array
 
     foreach ($validatedPlan['operations'] as $operation) {
 
-        $executionPlan['operations'][] = [
-            'id' => sprintf('OP-%05d', $counter++),
+        $details = $operation['details'] ?? [];
 
-            'category' => $operation['category'] ?? 'schema',
+		$sql = null;
 
-            'operation' => $operation['operation'] ?? 'unknown',
+		if (
+			($operation['operation'] ?? '') === 'create_table'
+		) {
+			$sql = $details['definition']['create_sql'] ?? null;
+		}
 
-            'target' => $operation['target'] ?? null,
+		$executionPlan['operations'][] = [
 
-            'details' => $operation['details'] ?? [],
+			'id' => sprintf(
+				'OP-%05d',
+				$counter++
+			),
 
-            'priority' => $this->priorityMap[
-    $operation['operation']
-	] ?? 999,
+			'category' => $operation['category'] ?? 'schema',
 
-            'dependencies' => [],
+			'operation' => $operation['operation'] ?? 'unknown',
 
-            'status' => 'pending'
-        ];
-    }
+			'target' => $operation['target'] ?? null,
+
+			'details' => $details,
+
+			'sql' => $sql,
+
+			'priority' => $this->priorityMap[
+				$operation['operation']
+			] ?? 999,
+
+			'dependencies' => [],
+
+			'status' => 'pending'
+		];
+			}
 	
 	usort(
 		$executionPlan['operations'],

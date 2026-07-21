@@ -411,6 +411,16 @@ final class SchemaInspector
         }
 
         $stringValue = (string) $value;
+		
+		$stringValue = trim((string)$value);
+
+	if (
+		strlen($stringValue) >= 2 &&
+		$stringValue[0] === "'" &&
+		$stringValue[strlen($stringValue) - 1] === "'"
+	) {
+		$stringValue = substr($stringValue, 1, -1);
+	}
 
         return $stringValue === '' ? null : $stringValue;
     }

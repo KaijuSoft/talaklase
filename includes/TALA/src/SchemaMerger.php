@@ -28,7 +28,10 @@ final class SchemaMerger
                $planned = match ($action) {
 
     'missing_destination_table'
-        => $this->planMissingDestinationTable($tableName),
+    => $this->planMissingDestinationTable(
+        $tableName,
+        $difference
+    ),
 
     'missing_source_table'
         => $this->planMissingSourceTable($tableName),
@@ -64,13 +67,17 @@ final class SchemaMerger
     /**
      * @return array<string, mixed>
      */
-	private function planMissingDestinationTable(string $table): array
+		private function planMissingDestinationTable(
+		string $table,
+		array $difference
+	): array
 	{
 		return $this->createOperation(
 			'create_table',
 			$table,
 			[
 				'table' => $table,
+				'definition' => $difference['definition'] ?? [],
 			],
 			true,
 			'Table exists in source but not destination.'
