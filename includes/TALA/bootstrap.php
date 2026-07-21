@@ -19,7 +19,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/src/Exceptions/SyncException.php';
 require_once __DIR__ . '/src/Exceptions/DependencyException.php';
 require_once __DIR__ . '/src/Exceptions/ConfigurationException.php';
-require_once __DIR__ . '/src/Handlers/OperationHandlerInterface.php';
+require_once __DIR__ . '/src/Contracts/OperationHandlerInterface.php';
 require_once __DIR__ . '/src/Handlers/CreateTableHandler.php';
 require_once __DIR__ . '/src/LoggerInterface.php';
 require_once __DIR__ . '/src/SyncSession.php';

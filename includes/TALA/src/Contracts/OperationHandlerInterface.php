@@ -12,5 +12,5 @@ interface OperationHandlerInterface
      * @param array $operation
      * @return array
      */
-    public function execute(array $operation): array;
+    public static function operation(): OperationType;
 }
