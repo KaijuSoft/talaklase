@@ -6,6 +6,7 @@ namespace Tala\Engine;
 
 use PDO;
 use Tala\Engine\Handlers\CreateTableHandler;
+use Tala\Engine\Handlers\ModifyColumnHandler;
 
 
 final class SchemaExecutor
@@ -23,6 +24,7 @@ final class SchemaExecutor
 private array $handlers = [
 
     'create_table' => CreateTableHandler::class,
+    'modify_column' => ModifyColumnHandler::class,
 
 ];
 

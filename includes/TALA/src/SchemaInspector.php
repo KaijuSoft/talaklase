@@ -11,6 +11,8 @@ final class SchemaInspector
 {
     private readonly PDO $source;
     private readonly PDO $destination;
+    /** @var array<int, bool> */
+    private array $supportsDatetimePrecision = [];
 
     public function __construct(PDO $source, PDO $destination)
     {
@@ -39,6 +41,17 @@ final class SchemaInspector
                 break;
             }
         }
+
+        $differenceCount = 0;
+        foreach ($results as $result) {
+            $differenceCount += is_array($result['differences'] ?? null) ? count($result['differences']) : 0;
+        }
+
+        error_log(sprintf(
+            'SchemaInspector::inspect differences=%d tables=%d',
+            $differenceCount,
+            count($results)
+        ));
 
         return [
             'status' => $overallStatus,
@@ -90,7 +103,7 @@ final class SchemaInspector
         $destinationIndexes = $this->fetchIndexes($this->destination, $table);
 
         $differences = array_merge(
-            $this->compareColumns($sourceColumns, $destinationColumns),
+            $this->compareColumns($sourceColumns, $destinationColumns, $table),
             $this->compareIndexes($sourceIndexes, $destinationIndexes)
         );
 
@@ -106,18 +119,42 @@ final class SchemaInspector
      */
     public function fetchColumns(PDO $pdo, string $table): array
     {
+        $datetimePrecisionSupported = $this->supportsDatetimePrecision($pdo);
+        error_log(sprintf(
+            'SchemaInspector::fetchColumns table=%s supportsDatetimePrecision=%s',
+            $table,
+            $datetimePrecisionSupported ? 'true' : 'false'
+        ));
+
+        $selectColumns = [
+            'COLUMN_NAME',
+            'COLUMN_TYPE',
+            'CHARACTER_MAXIMUM_LENGTH',
+            'CHARACTER_OCTET_LENGTH',
+            'NUMERIC_PRECISION',
+            'NUMERIC_SCALE',
+            'IS_NULLABLE',
+            'COLUMN_DEFAULT',
+            'EXTRA',
+            'COLUMN_COMMENT',
+            'COLLATION_NAME',
+            'CHARACTER_SET_NAME',
+            'ORDINAL_POSITION',
+        ];
+
+        if ($datetimePrecisionSupported) {
+            $selectColumns[] = 'DATETIME_PRECISION';
+        }
+
         $statement = $pdo->prepare("
             SELECT
-                COLUMN_NAME,
-                COLUMN_TYPE,
-                IS_NULLABLE,
-                COLUMN_DEFAULT,
-                EXTRA
+                " . implode(",\n                ", $selectColumns) . "
             FROM information_schema.COLUMNS
             WHERE TABLE_SCHEMA = DATABASE()
               AND TABLE_NAME = ?
             ORDER BY ORDINAL_POSITION
         ");
+        error_log('SchemaInspector::fetchColumns SQL: ' . str_replace("\n", ' ', trim($statement->queryString)));
         $statement->execute([$table]);
 
         $columns = [];
@@ -132,6 +169,17 @@ final class SchemaInspector
                 'nullable' => ((string) ($row['IS_NULLABLE'] ?? 'NO')) === 'YES',
                 'default' => $this->normalizeDefault($row['COLUMN_DEFAULT'] ?? null),
                 'extra' => strtolower((string) ($row['EXTRA'] ?? '')),
+                'collation' => $this->normalizeStringOrNull($row['COLLATION_NAME'] ?? null),
+                'charset' => $this->normalizeStringOrNull($row['CHARACTER_SET_NAME'] ?? null),
+                'comment' => $this->normalizeStringOrNull($row['COLUMN_COMMENT'] ?? null),
+                'length' => $this->normalizeIntegerOrNull($row['CHARACTER_MAXIMUM_LENGTH'] ?? null),
+                'octet_length' => $this->normalizeIntegerOrNull($row['CHARACTER_OCTET_LENGTH'] ?? null),
+                'precision' => $this->normalizeIntegerOrNull($row['NUMERIC_PRECISION'] ?? null),
+                'scale' => $this->normalizeIntegerOrNull($row['NUMERIC_SCALE'] ?? null),
+                'datetime_precision' => $datetimePrecisionSupported
+                    ? $this->normalizeIntegerOrNull($row['DATETIME_PRECISION'] ?? null)
+                    : null,
+                'ordinal_position' => $this->normalizeIntegerOrNull($row['ORDINAL_POSITION'] ?? null),
             ];
         }
 
@@ -275,7 +323,7 @@ final class SchemaInspector
      * @param array<string, array<string, mixed>> $destinationColumns
      * @return array<int, array<string, mixed>>
      */
-    public function compareColumns(array $sourceColumns, array $destinationColumns): array
+    public function compareColumns(array $sourceColumns, array $destinationColumns, string $table = ''): array
     {
         $differences = [];
 
@@ -284,36 +332,48 @@ final class SchemaInspector
                 $differences[] = [
                     'type' => 'missing_column',
                     'column' => $column,
+                    'definition' => $sourceDefinition,
+                    'source_definition' => $sourceDefinition,
+                    'destination_definition' => null,
                 ];
                 continue;
             }
 
             $destinationDefinition = $destinationColumns[$column];
+            $normalizedSource = $this->normalizeColumnDefinition($sourceDefinition);
+            $normalizedDestination = $this->normalizeColumnDefinition($destinationDefinition);
+            $changedFields = $this->compareNormalizedColumnDefinitions($normalizedSource, $normalizedDestination);
 
-            if ($sourceDefinition['type'] !== $destinationDefinition['type']) {
-                $differences[] = [
-                    'type' => 'column_type',
-                    'column' => $column,
-                    'source' => $sourceDefinition['type'],
-                    'destination' => $destinationDefinition['type'],
-                ];
+            if ($changedFields === []) {
+                error_log(sprintf(
+                    "SchemaInspector::compareColumns table=%s column=%s changed_fields=<none>",
+                    $table !== '' ? $table : 'unknown',
+                    $column
+                ));
+                continue;
             }
 
-            if ($sourceDefinition['nullable'] !== $destinationDefinition['nullable']) {
-                $differences[] = [
-                    'type' => 'column_nullable',
-                    'column' => $column,
-                    'source' => $sourceDefinition['nullable'],
-                    'destination' => $destinationDefinition['nullable'],
-                ];
-            }
+            error_log(sprintf(
+                "SchemaInspector::compareColumns table=%s column=%s changed_fields=%s source=%s destination=%s source_default_type=%s destination_default_type=%s source_datetime_precision_type=%s destination_datetime_precision_type=%s",
+                $table !== '' ? $table : 'unknown',
+                $column,
+                implode(',', $changedFields),
+                json_encode($normalizedSource, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                json_encode($normalizedDestination, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                get_debug_type($normalizedSource['default'] ?? null),
+                get_debug_type($normalizedDestination['default'] ?? null),
+                get_debug_type($normalizedSource['datetime_precision'] ?? null),
+                get_debug_type($normalizedDestination['datetime_precision'] ?? null)
+            ));
 
-            if ($this->normalizeDefault($sourceDefinition['default']) !== $this->normalizeDefault($destinationDefinition['default'])) {
+            foreach ($changedFields as $field) {
                 $differences[] = [
-                    'type' => 'column_default',
+                    'type' => 'column_' . $field,
                     'column' => $column,
-                    'source' => $sourceDefinition['default'],
-                    'destination' => $destinationDefinition['default'],
+                    'source' => $normalizedSource[$field] ?? null,
+                    'destination' => $normalizedDestination[$field] ?? null,
+                    'source_definition' => $sourceDefinition,
+                    'destination_definition' => $destinationDefinition,
                 ];
             }
         }
@@ -329,6 +389,39 @@ final class SchemaInspector
         }
 
         return $differences;
+    }
+
+    /**
+     * @param array<string, mixed> $source
+     * @param array<string, mixed> $destination
+     * @return array<int, string>
+     */
+    private function compareNormalizedColumnDefinitions(array $source, array $destination): array
+    {
+        $fields = [
+            'type',
+            'nullable',
+            'default',
+            'charset',
+            'collation',
+            'comment',
+            'length',
+            'octet_length',
+            'precision',
+            'scale',
+            'datetime_precision',
+            'extra',
+        ];
+
+        $changed = [];
+
+        foreach ($fields as $field) {
+            if (($source[$field] ?? null) !== ($destination[$field] ?? null)) {
+                $changed[] = $field;
+            }
+        }
+
+        return $changed;
     }
 
     /**
@@ -423,5 +516,155 @@ final class SchemaInspector
 	}
 
         return $stringValue === '' ? null : $stringValue;
+    }
+
+    private function normalizeStringOrNull(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $stringValue = trim((string) $value);
+
+        return $stringValue === '' ? null : $stringValue;
+    }
+
+    private function normalizeIntegerOrNull(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    /**
+     * @param array<string, mixed> $definition
+     * @return array<string, mixed>
+     */
+    private function normalizeColumnDefinition(array $definition): array
+    {
+        $type = $this->normalizeColumnType((string) ($definition['type'] ?? ''));
+        $default = $this->normalizeComparableDefault($definition['default'] ?? null);
+
+        return [
+            'type' => $type,
+            'nullable' => $this->normalizeBoolean($definition['nullable'] ?? true),
+            'default' => $default,
+            'extra' => $this->normalizeExtra($definition['extra'] ?? ''),
+            'collation' => $this->normalizeStringOrNull($definition['collation'] ?? null),
+            'charset' => $this->normalizeStringOrNull($definition['charset'] ?? null),
+            'comment' => $this->normalizeStringOrNull($definition['comment'] ?? null),
+            'length' => $this->normalizeIntegerOrNull($definition['length'] ?? null),
+            'octet_length' => $this->normalizeIntegerOrNull($definition['octet_length'] ?? null),
+            'precision' => $this->normalizeIntegerOrNull($definition['precision'] ?? null),
+            'scale' => $this->normalizeIntegerOrNull($definition['scale'] ?? null),
+            'datetime_precision' => $this->normalizeDatetimePrecision($definition['datetime_precision'] ?? null),
+            'ordinal_position' => $this->normalizeIntegerOrNull($definition['ordinal_position'] ?? null),
+        ];
+    }
+
+    private function normalizeBoolean(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_int($value)) {
+            return $value !== 0;
+        }
+
+        $stringValue = strtolower(trim((string) $value));
+
+        return in_array($stringValue, ['1', 'true', 'yes', 'y', 'on'], true);
+    }
+
+    private function normalizeExtra(mixed $value): string
+    {
+        return strtolower(trim((string) $value));
+    }
+
+    private function normalizeColumnType(string $type): string
+    {
+        $value = strtolower(trim($type));
+        $value = preg_replace('/\s+/', ' ', $value) ?? $value;
+
+        $value = preg_replace('/\((\d+)\)/', '($1)', $value) ?? $value;
+        $value = preg_replace('/\b(int|integer|bigint|smallint|mediumint|tinyint)\(\d+\)/', '$1', $value) ?? $value;
+
+        if (preg_match('/^([a-z]+)\s*\((.*)\)$/', $value, $matches) === 1) {
+            $baseType = $matches[1];
+            $args = $matches[2];
+
+            if (in_array($baseType, ['enum', 'set'], true)) {
+                return $baseType . '(' . $args . ')';
+            }
+        }
+
+        return $value;
+    }
+
+    private function normalizeComparableDefault(mixed $value): mixed
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_bool($value) || is_int($value) || is_float($value)) {
+            return $value;
+        }
+
+        $stringValue = trim((string) $value);
+        if ($stringValue === '') {
+            return null;
+        }
+
+        $upper = strtoupper($stringValue);
+        if ($upper === 'NULL') {
+            return null;
+        }
+
+        if (in_array($upper, ['CURRENT_TIMESTAMP', 'CURRENT_TIMESTAMP()'], true)) {
+            return 'CURRENT_TIMESTAMP';
+        }
+
+        if (strlen($stringValue) >= 2 && $stringValue[0] === "'" && $stringValue[strlen($stringValue) - 1] === "'") {
+            $stringValue = substr($stringValue, 1, -1);
+        }
+
+        return is_numeric($stringValue) ? $stringValue + 0 : $stringValue;
+    }
+
+    private function normalizeDatetimePrecision(mixed $value): ?int
+    {
+        $precision = $this->normalizeIntegerOrNull($value);
+
+        return $precision === 0 ? null : $precision;
+    }
+
+    private function supportsDatetimePrecision(PDO $pdo): bool
+    {
+        $cacheKey = spl_object_id($pdo);
+
+        if (array_key_exists($cacheKey, $this->supportsDatetimePrecision)) {
+            return $this->supportsDatetimePrecision[$cacheKey];
+        }
+
+        try {
+            $statement = $pdo->prepare("
+                SELECT COUNT(*)
+                FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = 'information_schema'
+                  AND TABLE_NAME = 'COLUMNS'
+                  AND COLUMN_NAME = 'DATETIME_PRECISION'
+            ");
+            $statement->execute();
+
+            $this->supportsDatetimePrecision[$cacheKey] = (int) $statement->fetchColumn() > 0;
+        } catch (Throwable) {
+            $this->supportsDatetimePrecision[$cacheKey] = false;
+        }
+
+        return $this->supportsDatetimePrecision[$cacheKey];
     }
 }

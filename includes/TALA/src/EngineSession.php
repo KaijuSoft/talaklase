@@ -19,7 +19,8 @@ final class EngineSession
     private array $inspection = [];
     private array $mergePlan = [];
     private array $validation = [];
-    private array $execution = [];
+    private array $executionPlan = [];
+    private array $executionResult = [];
     private array $verification = [];
 
     public function __construct()
@@ -70,10 +71,62 @@ final class EngineSession
         return $this;
     }
 
+    public function setExecutionPlan(array $plan): self
+    {
+        $this->executionPlan = $plan;
+        return $this;
+    }
+
+    public function getExecutionPlan(): array
+    {
+        return $this->executionPlan;
+    }
+
+    public function setExecutionResult(array $result): self
+    {
+        $this->executionResult = $result;
+        return $this;
+    }
+
+    public function getExecutionResult(): array
+    {
+        return $this->executionResult;
+    }
+
+    public function hasExecutionPlan(): bool
+    {
+        return $this->executionPlan !== [];
+    }
+
+    public function hasExecutionResult(): bool
+    {
+        return $this->executionResult !== [];
+    }
+
+    /**
+     * Temporary compatibility wrapper for older callers.
+     *
+     * @deprecated Use setExecutionPlan() or setExecutionResult() instead.
+     */
     public function setExecution(array $execution): self
     {
-        $this->execution = $execution;
+        if ($this->executionPlan === []) {
+            $this->executionPlan = $execution;
+            return $this;
+        }
+
+        $this->executionResult = $execution;
         return $this;
+    }
+
+    /**
+     * Temporary compatibility wrapper for older callers.
+     *
+     * @deprecated Use getExecutionPlan() or getExecutionResult() instead.
+     */
+    public function getExecution(): array
+    {
+        return $this->executionResult !== [] ? $this->executionResult : $this->executionPlan;
     }
 
     public function setVerification(array $verification): self
@@ -109,7 +162,8 @@ final class EngineSession
             'inspection' => $this->inspection,
             'merge_plan' => $this->mergePlan,
             'validation' => $this->validation,
-            'execution' => $this->execution,
+            'execution_plan' => $this->executionPlan,
+            'execution_result' => $this->executionResult,
             'verification' => $this->verification,
         ];
     }

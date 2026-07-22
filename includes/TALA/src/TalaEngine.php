@@ -61,6 +61,8 @@ final class TalaEngine
 
     private readonly ?LoggerInterface $logger;
 
+    private ?EngineSession $engineSession = null;
+
     /** @var array<int, string> Table sync order, resolved once at construction time. */
     private readonly array $syncOrder;
 
@@ -212,6 +214,8 @@ foreach ($this->syncOrder as $tableName) {
             ->setSourceDatabase($this->describeConnection($this->source))
             ->setDestinationDatabase($this->describeConnection($this->destination));
 
+        $this->engineSession = $session;
+
         $health = $this->healthCheck();
         $session->setHealth($health);
 
@@ -252,13 +256,39 @@ foreach ($this->syncOrder as $tableName) {
 
 		$session
 			->setValidation($validatedPlan)
-			->setExecution($executionPlan)
+			->setExecutionPlan($executionPlan)
 			->setVerification([])
 			->finish();
 
 				return $session->toArray();
 				
 			}
+
+    /**
+     * Executes the previously built execution plan without rebuilding
+     * it or re-running any planning stage.
+     *
+     * @return array<string, mixed>
+     */
+    public function executePlan(): array
+    {
+        if ($this->engineSession === null) {
+            throw new SyncException('No execution plan is available. Run analyzeSchema() before executePlan().');
+        }
+
+        $executionPlan = $this->engineSession->getExecutionPlan();
+
+        if ($executionPlan === []) {
+            throw new SyncException('No execution plan is available in the current EngineSession.');
+        }
+
+        $executor = new SchemaExecutor($this->source, $this->destination);
+        $executionResult = $executor->execute($executionPlan);
+
+        $this->engineSession->setExecutionResult($executionResult);
+
+        return $executionResult;
+    }
 	
 	public function healthCheck(): array
 {

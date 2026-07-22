@@ -40,6 +40,13 @@ $executor = new SchemaExecutor(
 
 echo "After constructor\n";
 
+
+$result = $engine->analyzeSchema();
+
+echo "<pre>";
+print_r($result['execution']);
+echo "</pre>";
+
 echo "<h3>SHOW CREATE TABLE Test</h3>";
 
 $stmt = $source->query("SHOW CREATE TABLE `tala_executor_test`");
