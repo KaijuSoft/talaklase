@@ -14,12 +14,12 @@ echo "<pre>";
 echo "Class exists: ";
 var_dump(class_exists(SchemaExecutor::class));
 
-$source = getOnlineConnection();
-$destination = getLocalConnection();
+$source = getLocalConnection();
+$destination = getOnlineConnection();
 
 echo "Before constructor\n";
 
-$pdo = getOnlineConnection();
+$pdo = getLocalConnection();
 
 echo "Database: " . $pdo->query("SELECT DATABASE()")->fetchColumn() . "<br>";
 
