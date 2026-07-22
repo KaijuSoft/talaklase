@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tala\Engine\Handlers;
 
 use PDO;
+use Tala\Engine\Contracts\OperationHandlerInterface;
 use Tala\Engine\Enums\ExecutionStatus;
 use Tala\Engine\Enums\OperationType;
 

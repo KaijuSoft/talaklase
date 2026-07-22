@@ -50,10 +50,15 @@ $sql = $row['Create Table'];
 $result = $executor->execute([
     'operations' => [
         [
-            'operation' => 'create_table',
-            'target'    => 'tala_executor_test',
-            'sql'       => $sql
-        ]
+		'operation' => 'create_table',
+		'target'    => 'tala_executor_test',
+
+		'details' => [
+        'table' => 'tala_executor_test'
+		],
+
+		'sql' => $sql
+		]
     ]
 ]);
 
