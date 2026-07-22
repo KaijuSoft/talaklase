@@ -24,6 +24,7 @@ require_once __DIR__ . '/src/Enums/ExecutionStatus.php';
 require_once __DIR__ . '/src/Enums/TargetType.php';
 require_once __DIR__ . '/src/Contracts/OperationHandlerInterface.php';
 require_once __DIR__ . '/src/Handlers/CreateTableHandler.php';
+require_once __DIR__ . '/src/Handlers/AddColumnHandler.php';
 require_once __DIR__ . '/src/LoggerInterface.php';
 require_once __DIR__ . '/src/SyncSession.php';
 require_once __DIR__ . '/src/DataSnapshot.php';

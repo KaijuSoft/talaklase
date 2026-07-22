@@ -1,141 +1,109 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tala\Engine;
 
+use Tala\Engine\Enums\OperationType;
+use Tala\Engine\Enums\ExecutionStatus;
+
 /**
- * RC2.10
- * ExecutionPlanBuilder
+ * Converts a validated merge plan into an executable execution plan.
  *
- * Converts a validated merge plan into an executable plan.
- *
- * NOTE:
- * This class DOES NOT execute SQL.
- * It only prepares an ordered execution plan.
+ * This class does not execute SQL. It only prepares the execution metadata
+ * consumed by SchemaExecutor.
  */
 class ExecutionPlanBuilder
 {
-	
-		/**
-	 * Execution priority.
-	 * Lower numbers execute first.
-	 *
-	 * @var array<string,int>
-	 */
-	private array $priorityMap = [
-
-		'create_table' => 10,
-
-		'add_column' => 20,
-
-		'modify_column' => 30,
-
-		'create_index' => 40,
-
-		'create_foreign_key' => 50,
-
-		'drop_foreign_key' => 60,
-
-		'drop_index' => 70,
-
-		'drop_column' => 80,
-
-		'drop_table' => 90,
-	];
-	
-	
-   /**
- * Build an execution plan from a validated merge plan.
- *
- * @param array $validatedPlan
- * @return array
- */
-public function build(array $validatedPlan): array
-{
-    $executionPlan = [
-        'status' => true,
-
-        'summary' => [
-            'operations' => 0,
-            'warnings'  => 0,
-            'errors'    => 0,
-        ],
-
-        'operations' => [],
-
-        'warnings' => [],
-
-        'errors' => [],
+    /**
+     * Execution priority.
+     * Lower numbers execute first.
+     *
+     * @var array<string,int>
+     */
+    private array $priorityMap = [
+        OperationType::CREATE_TABLE->value => 10,
+        OperationType::ADD_COLUMN->value => 20,
+        OperationType::MODIFY_COLUMN->value => 30,
+        OperationType::CREATE_INDEX->value => 40,
+        OperationType::CREATE_FOREIGN_KEY->value => 50,
+        OperationType::DROP_FOREIGN_KEY->value => 60,
+        OperationType::DROP_INDEX->value => 70,
+        OperationType::DROP_COLUMN->value => 80,
+        OperationType::DROP_TABLE->value => 90,
     ];
 
-    if (empty($validatedPlan['operations'])) {
+    /**
+     * Build an execution plan from a validated merge plan.
+     *
+     * @param array<string, mixed> $validatedPlan
+     * @return array<string, mixed>
+     */
+    public function build(array $validatedPlan): array
+    {
+        $executionPlan = [
+            'status' => true,
+            'summary' => [
+                'operations' => 0,
+                'warnings' => 0,
+                'errors' => 0,
+            ],
+            'operations' => [],
+            'warnings' => [],
+            'errors' => [],
+        ];
+
+        foreach ($validatedPlan['operations'] ?? [] as $index => $operation) {
+            $operationType = $operation['operation'] ?? null;
+
+            $executionPlan['operations'][] = [
+                'id' => sprintf('OP-%05d', $index + 1),
+                'category' => $operation['category'] ?? 'schema',
+                'operation' => $operationType,
+                'target_type' => $operation['target_type'] ?? null,
+                'target' => $operation['target'] ?? null,
+                'details' => $operation['details'] ?? [],
+                'safe' => $operation['safe'] ?? true,
+                'reason' => $operation['reason'] ?? null,
+                'sql' => $this->buildSql($operation),
+                'priority' => $this->priorityMap[$operationType] ?? 999,
+                'dependencies' => $operation['dependencies'] ?? [],
+                'status' => ExecutionStatus::PENDING->value,
+            ];
+        }
+
+        usort(
+            $executionPlan['operations'],
+            static fn (array $a, array $b): int => $a['priority'] <=> $b['priority']
+        );
+
+        foreach ($executionPlan['operations'] as $index => &$operation) {
+            $operation['id'] = sprintf('OP-%05d', $index + 1);
+        }
+        unset($operation);
+
+        $executionPlan['summary']['operations'] = count($executionPlan['operations']);
+
         return $executionPlan;
     }
 
-    $counter = 1;
-
-    foreach ($validatedPlan['operations'] as $operation) {
-
+    /**
+     * Build SQL for supported operations.
+     *
+     * Only CREATE TABLE currently produces SQL. All other operations return
+     * null so execution remains unchanged until their handlers are added.
+     *
+     * @param array<string, mixed> $operation
+     */
+    private function buildSql(array $operation): ?string
+    {
         $details = $operation['details'] ?? [];
 
-		$sql = null;
-
-		if (
-			($operation['operation'] ?? '') === 'create_table'
-		) {
-			$sql = $details['definition']['create_sql'] ?? null;
-		}
-
-		$executionPlan['operations'][] = [
-
-			'id' => sprintf(
-				'OP-%05d',
-				$counter++
-			),
-
-			'category' => $operation['category'] ?? 'schema',
-
-			'operation' => $operation['operation'] ?? 'unknown',
-
-			'target' => $operation['target'] ?? null,
-
-			'details' => $details,
-
-			'sql' => $sql,
-
-			'priority' => $this->priorityMap[
-				$operation['operation']
-			] ?? 999,
-
-			'dependencies' => [],
-
-			'status' => 'pending'
-		];
-			}
-	
-	usort(
-		$executionPlan['operations'],
-		function (array $a, array $b): int {
-
-			return $a['priority'] <=> $b['priority'];
-
-		}
-	);
-		
-		foreach ($executionPlan['operations'] as $index => &$operation) {
-
-    $operation['id'] = sprintf(
-        'OP-%05d',
-        $index + 1
-    );
-
-}
-
-		unset($operation);
-
-		$executionPlan['summary']['operations'] =
-			count($executionPlan['operations']);
-
-		return $executionPlan;
-	}
-	
+        return match ($operation['operation'] ?? null) {
+            OperationType::CREATE_TABLE->value => $details['definition']['create_sql']
+                ?? $details['create_sql']
+                ?? null,
+            default => null,
+        };
+    }
 }
