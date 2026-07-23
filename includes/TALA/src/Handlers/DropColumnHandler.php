@@ -8,79 +8,61 @@ use PDO;
 use Tala\Engine\Contracts\OperationHandlerInterface;
 use Tala\Engine\Enums\ExecutionStatus;
 use Tala\Engine\Enums\OperationType;
-use Tala\Engine\SqlColumnDefinitionBuilder;
 
 /**
- * Handles ADD COLUMN operations in the schema execution pipeline.
- *
- * The handler validates the payload, builds the SQL statement, and executes it
- * only when the destination column does not already exist.
+ * Handles DROP COLUMN operations in the schema execution pipeline.
  */
-final class AddColumnHandler implements OperationHandlerInterface
+final class DropColumnHandler implements OperationHandlerInterface
 {
     private PDO $source;
 
     private PDO $destination;
 
-    private SqlColumnDefinitionBuilder $columnBuilder;
-
     public function __construct(PDO $source, PDO $destination)
     {
         $this->source = $source;
         $this->destination = $destination;
-        $this->columnBuilder = new SqlColumnDefinitionBuilder($destination);
     }
 
-    /**
-     * Returns the supported operation type.
-     */
     public static function operation(): OperationType
     {
-        return OperationType::ADD_COLUMN;
+        return OperationType::DROP_COLUMN;
     }
 
     /**
-     * Execute an ADD COLUMN operation.
-     *
-     * Validation is limited to the presence of the target table, target column,
-     * and column definition metadata. If SQL is not provided, the operation is
-     * skipped and execution is deferred to the SQL generation layer.
-     *
      * @param array<string, mixed> $operation
      * @return array<string, mixed>
      */
     public function execute(array $operation): array
     {
         $started = microtime(true);
+        $table = null;
+        $column = null;
 
         try {
             $details = $operation['details'] ?? [];
             $table = (string) ($details['table'] ?? '');
             $column = (string) ($details['column'] ?? '');
-            $definition = $details['definition'] ?? null;
 
-            if ($table === '') {
+            if ($table === '' || $column === '') {
                 return $this->buildResult(
                     ExecutionStatus::FAILED->value,
-                    $started
+                    $started,
+                    $table,
+                    $column
                 );
             }
 
             if (!$this->tableExists($table)) {
                 return $this->buildResult(
                     ExecutionStatus::FAILED->value,
-                    $started
+                    $started,
+                    $table,
+                    $column
                 );
             }
 
-            if ($column === '') {
-                return $this->buildResult(
-                    ExecutionStatus::FAILED->value,
-                    $started
-                );
-            }
-
-            if ($this->columnExists($table, $column)) {
+            if (!$this->columnExists($table, $column)) {
                 return $this->buildResult(
                     ExecutionStatus::SKIPPED->value,
                     $started,
@@ -89,25 +71,8 @@ final class AddColumnHandler implements OperationHandlerInterface
                 );
             }
 
-            if ($definition === null || $definition === []) {
-                return $this->buildResult(
-                    ExecutionStatus::FAILED->value,
-                    $started
-                );
-            }
-
-            $sql = $this->buildSql($table, $column, $definition);
-
-            if ($sql === null) {
-                return $this->buildResult(
-                    ExecutionStatus::SKIPPED->value,
-                    $started,
-                    $table,
-                    $column
-                );
-            }
-
-            $this->destination->exec((string) $sql);
+            $sql = $this->buildSql($table, $column);
+            $this->destination->exec($sql);
 
             return $this->buildResult(
                 ExecutionStatus::COMPLETED->value,
@@ -120,37 +85,21 @@ final class AddColumnHandler implements OperationHandlerInterface
             return $this->buildResult(
                 ExecutionStatus::FAILED->value,
                 $started,
-                $table ?? null,
-                $column ?? null,
-                null
+                $table,
+                $column
             );
         }
     }
 
-    /**
-     * Build the SQL statement for ADD COLUMN.
-     *
-     * @param array<string, mixed> $definition
-     */
-    private function buildSql(string $table, string $column, array $definition): ?string
+    private function buildSql(string $table, string $column): string
     {
-        $columnDefinition = $this->columnBuilder->buildColumnDefinition($definition);
-
-        if ($columnDefinition === '') {
-            return null;
-        }
-
         return sprintf(
-            'ALTER TABLE `%s` ADD COLUMN `%s` %s;',
+            'ALTER TABLE `%s` DROP COLUMN `%s`;',
             $table,
-            $column,
-            $columnDefinition
+            $column
         );
     }
 
-    /**
-     * Check whether the target table exists on the destination connection.
-     */
     private function tableExists(string $table): bool
     {
         $statement = $this->destination->prepare(
@@ -166,9 +115,6 @@ final class AddColumnHandler implements OperationHandlerInterface
         return (int) $statement->fetchColumn() > 0;
     }
 
-    /**
-     * Check whether the target column already exists on the destination table.
-     */
     private function columnExists(string $table, string $column): bool
     {
         $statement = $this->destination->prepare(
@@ -186,10 +132,6 @@ final class AddColumnHandler implements OperationHandlerInterface
     }
 
     /**
-     * Build a standardized skipped result.
-     *
-     * @param string $reason
-     * @param float $started
      * @return array<string, mixed>
      */
     private function buildResult(
@@ -201,7 +143,7 @@ final class AddColumnHandler implements OperationHandlerInterface
     ): array {
         return [
             'status' => $status,
-            'operation' => OperationType::ADD_COLUMN->value,
+            'operation' => OperationType::DROP_COLUMN->value,
             'table' => $table,
             'column' => $column,
             'sql' => $sql,

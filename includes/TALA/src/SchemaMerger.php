@@ -78,7 +78,16 @@ final class SchemaMerger
 
     private function planMissingSourceTable(string $table): ?array
     {
-        return null;
+        return $this->createOperation(
+            OperationType::DROP_TABLE->value,
+            TargetType::TABLE->value,
+            $table,
+            [
+                'table' => $table,
+            ],
+            true,
+            'Table exists in destination but not source.'
+        );
     }
 
     /**
@@ -87,13 +96,29 @@ final class SchemaMerger
      */
     private function planMissingColumn(string $table, array $difference): array
     {
+        $column = (string) ($difference['column'] ?? '');
+
+        if (($difference['side'] ?? 'destination') === 'source') {
+            return $this->createOperation(
+                OperationType::DROP_COLUMN->value,
+                TargetType::COLUMN->value,
+                "{$table}.{$column}",
+                [
+                    'table' => $table,
+                    'column' => $column,
+                ],
+                true,
+                'Column exists in destination but not source.'
+            );
+        }
+
         return $this->createOperation(
             OperationType::ADD_COLUMN->value,
             TargetType::COLUMN->value,
-            "{$table}." . (string) ($difference['column'] ?? ''),
+            "{$table}.{$column}",
             [
                 'table' => $table,
-                'column' => (string) ($difference['column'] ?? ''),
+                'column' => $column,
                 'definition' => $difference['definition'] ?? [],
             ]
         );

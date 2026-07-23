@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace Tala\Engine;
 
 use PDO;
+use Tala\Engine\Enums\ExecutionStatus;
 use Tala\Engine\Handlers\CreateTableHandler;
+use Tala\Engine\Handlers\AddColumnHandler;
+use Tala\Engine\Handlers\DropColumnHandler;
+use Tala\Engine\Handlers\DropTableHandler;
 use Tala\Engine\Handlers\ModifyColumnHandler;
 
 
@@ -22,10 +26,11 @@ final class SchemaExecutor
  * @var array<string,string>
  */
 private array $handlers = [
-
     'create_table' => CreateTableHandler::class,
+    'add_column' => AddColumnHandler::class,
     'modify_column' => ModifyColumnHandler::class,
-
+    'drop_column' => DropColumnHandler::class,
+    'drop_table' => DropTableHandler::class,
 ];
 
     /**
@@ -63,13 +68,13 @@ private array $handlers = [
 
 $results[] = $result;
 
-switch ($result['status']) {
+switch ($result['status'] ?? null) {
 
-    case 'executed':
+    case ExecutionStatus::COMPLETED->value:
         $executed++;
         break;
 
-    case 'failed':
+    case ExecutionStatus::FAILED->value:
         $failed++;
         break;
 
@@ -95,7 +100,7 @@ switch ($result['status']) {
     }
 
 
-	private function executeOperation(array $operation): array
+private function executeOperation(array $operation): array
 	{
 		$operationType = $operation['operation'] ?? '';
 
@@ -134,27 +139,13 @@ private function skipOperation(
     $start = microtime(true);
 
     return [
-
+        'status' => ExecutionStatus::SKIPPED->value,
         'operation' => $operation['operation'] ?? 'unknown',
-
         'table' => $operation['table'] ?? null,
-
         'column' => $operation['column'] ?? null,
-
-        'index' => $operation['index'] ?? null,
-
         'sql' => $operation['sql'] ?? null,
-
-        'status' => 'skipped',
-
-        'reason' => $reason,
-
-        'error' => null,
-
-        'executed' => false,
-
         'started_at' => date('Y-m-d H:i:s'),
-
+        'finished_at' => date('Y-m-d H:i:s'),
         'duration_ms' => round((microtime(true) - $start) * 1000, 3)
     ];
 }

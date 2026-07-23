@@ -331,6 +331,7 @@ final class SchemaInspector
             if (!array_key_exists($column, $destinationColumns)) {
                 $differences[] = [
                     'type' => 'missing_column',
+                    'side' => 'destination',
                     'column' => $column,
                     'definition' => $sourceDefinition,
                     'source_definition' => $sourceDefinition,

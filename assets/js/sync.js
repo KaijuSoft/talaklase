@@ -1,251 +1,156 @@
-// TalaKlase sync page controller. All sync work still goes through sync_api.php.
+// RC3.3 synchronization dashboard. All synchronization work is performed by TalaEngine APIs.
 (function () {
-  const API = 'sync_api.php';
+  const API_ROOT = 'admin/tala/api/';
+  let busy = false;
 
-  function byId(id) {
-    return document.getElementById(id);
+  const $ = (id) => document.getElementById(id);
+
+  function setText(id, value) {
+    const element = $(id);
+    if (element) element.textContent = value;
   }
 
-  function postAction(action) {
-    return fetch(API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ action })
+  function setClass(id, value) {
+    const element = $(id);
+    if (element) element.className = value;
+  }
+
+  function setHtml(id, value) {
+    const element = $(id);
+    if (element) element.innerHTML = value;
+  }
+
+  function toggleClass(id, className, force) {
+    const element = $(id);
+    if (element) element.classList.toggle(className, force);
+  }
+
+  function setBusy(value, label) {
+    busy = value;
+    ['btnAnalyzeSchema', 'btnExecuteSync', 'btnRefreshDashboard'].forEach((id) => {
+      const button = $(id);
+      if (button) button.disabled = value || (id === 'btnExecuteSync' && !plan.length);
+    });
+    const loading = $('syncLoading');
+    if (loading) loading.classList.toggle('d-none', !value);
+    if (label) setText('syncLoadingText', label);
+  }
+
+  function showAlert(message, type) {
+    const alert = $('syncAlert');
+    if (!alert) return;
+    alert.textContent = message;
+    alert.className = `alert alert-${type} mb-3`;
+  }
+
+  function clearAlert() {
+    setClass('syncAlert', 'alert d-none');
+    setText('syncAlert', '');
+  }
+
+  async function request(endpoint) {
+    const response = await fetch(API_ROOT + endpoint, { headers: { Accept: 'application/json' } });
+    const payload = await response.json();
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'The synchronization request failed.');
+    return payload.data || {};
+  }
+
+  let plan = [];
+
+  function statusText(connected) { return connected ? 'Connected' : 'Disconnected'; }
+
+  function updateStatus(data) {
+    setText('sourceStatus', statusText(data.source_connection));
+    setClass('sourceStatus', `stat-value fs-5 ${data.source_connection ? 'text-success' : 'text-danger'}`);
+    setText('destinationStatus', statusText(data.destination_connection));
+    setClass('destinationStatus', `stat-value fs-5 ${data.destination_connection ? 'text-success' : 'text-danger'}`);
+    const count = Number(data.pending_operations || 0);
+    setText('syncStatusValue', count ? 'Changes Detected' : 'Up to Date');
+    setText('pendingCount', `${count} pending operation${count === 1 ? '' : 's'}`);
+    setText('lastAnalysisDuration', data.duration_ms != null ? `${Number(data.duration_ms).toFixed(2)} ms` : '-');
+  }
+
+  function severity(operation) {
+    const name = String(operation || '').toUpperCase();
+    if (name === 'DROP_TABLE') return ['Danger', 'text-bg-danger'];
+    if (name === 'DROP_COLUMN') return ['High', 'text-bg-warning'];
+    if (name === 'MODIFY_COLUMN') return ['Medium', 'text-bg-info'];
+    return [name === 'CREATE_TABLE' ? 'Low' : 'Info', 'text-bg-primary'];
+  }
+
+  function renderPlan(operations) {
+    plan = Array.isArray(operations) ? operations : [];
+    setText('planCount', `${plan.length} operation${plan.length === 1 ? '' : 's'}`);
+    toggleClass('planEmpty', 'd-none', plan.length > 0);
+    toggleClass('planTableWrap', 'd-none', plan.length === 0);
+    const executeButton = $('btnExecuteSync');
+    if (executeButton) executeButton.disabled = busy || plan.length === 0;
+    const body = $('planTableBody');
+    if (!body) return;
+    body.replaceChildren();
+    plan.forEach((operation, index) => {
+      const details = operation.details || {};
+      const [severityText, severityClass] = severity(operation.operation);
+      const row = document.createElement('tr');
+      const sql = operation.sql || 'SQL will be generated during execution.';
+      row.innerHTML = `<td><span class="badge text-bg-secondary">${operation.operation || '-'}</span></td>`
+        + `<td><code>${details.table || operation.target || '-'}</code>${details.column ? `<div class="small text-muted">${details.column}</div>` : ''}</td>`
+        + `<td><span class="badge ${severityClass}">${severityText}</span></td>`
+        + `<td>${operation.reason || 'Schema difference detected.'}</td>`
+        + `<td><span class="badge text-bg-light">${operation.status || 'Pending'}</span></td>`
+        + `<td><details><summary class="text-primary" role="button">Preview</summary><pre class="small mt-2 mb-0"><code>${sql}</code></pre></details></td>`;
+      body.appendChild(row);
     });
   }
 
-  function setButtonState(disabled) {
-    const btnPushOnline = byId('btnPushOnline');
-    const btnPushLocal = byId('btnPushLocal');
-    if (btnPushOnline) btnPushOnline.disabled = disabled;
-    if (btnPushLocal) btnPushLocal.disabled = disabled;
+  async function refresh() {
+    if (busy) return;
+    clearAlert();
+    setBusy(true, 'Refreshing synchronization status...');
+    try { updateStatus(await request('status.php')); }
+    catch (error) { showAlert(error.message, 'danger'); }
+    finally { setBusy(false); }
   }
 
-  function setText(id, value) {
-    const el = byId(id);
-    if (el) el.textContent = value;
+  async function analyze() {
+    if (busy) return;
+    clearAlert();
+    setBusy(true, 'Analyzing database schemas...');
+    try {
+      const data = await request('analyze.php');
+      plan = data.operations || [];
+      renderPlan(plan);
+      setText('lastAnalysisTime', new Date().toLocaleString());
+      setText('lastAnalysisDuration', `${Number(data.summary?.duration_ms || 0).toFixed(2)} ms`);
+      if (data.errors?.length) showAlert(data.errors.join(' '), 'warning');
+      else if (!plan.length) showAlert('Database schemas are synchronized.', 'success');
+    } catch (error) { showAlert(error.message, 'danger'); }
+    finally { setBusy(false); }
   }
 
-  function resetSummary() {
-    const summaryCard = byId('summaryCard');
-    if (summaryCard) summaryCard.classList.add('d-none');
-
-    setText('sumDuration', '0 sec');
-    setText('sumTables', '0');
-    setText('sumInserted', '0');
-    setText('sumSkipped', '0');
-    setText('sumModified', '0');
-    setText('sumFailed', '0');
-    setText('sumConflicts', '0');
+  async function execute() {
+    if (busy || !plan.length) return;
+    clearAlert();
+    setBusy(true, 'Executing synchronization plan...');
+    try {
+      const data = await request('execute.php');
+      const remaining = Number(data.remaining_operations || 0);
+      toggleClass('executionSummary', 'd-none', false);
+      setHtml('executionSummaryBody', [['Executed', data.executed], ['Skipped', data.skipped], ['Failed', data.failed], ['Remaining', remaining]]
+        .map(([label, value]) => `<div class="col-6 col-md-3"><div class="stat-card"><div class="stat-label">${label}</div><div class="stat-value fs-4">${Number(value || 0)}</div></div></div>`).join(''));
+      if (remaining === 0) { renderPlan([]); showAlert('Synchronization completed successfully. No operations remain.', 'success'); }
+      else { showAlert(`${remaining} operation${remaining === 1 ? '' : 's'} remain after execution.`, 'warning'); }
+    } catch (error) { showAlert(error.message, 'danger'); }
+    finally { setBusy(false); }
   }
 
-  function resetProgressPanel() {
-    byId('syncPanel').classList.remove('d-none');
-    byId('syncLog').innerHTML = '';
-    byId('syncProgress').style.width = '0%';
-    byId('syncProgress').textContent = '0%';
-    byId('syncProgress').className = 'progress-bar progress-bar-striped progress-bar-animated bg-primary';
-    byId('syncCount').textContent = '0 / 0 Tables';
-    byId('syncStatus').textContent = 'Initializing.';
-    byId('syncTable').textContent = '-';
-    byId('syncTitle').innerHTML = '<i class="bi bi-arrow-repeat me-2 text-primary"></i>Syncing Database.';
-    setButtonState(true);
-    resetSummary();
+  function init() {
+    $('btnAnalyzeSchema')?.addEventListener('click', analyze);
+    $('btnExecuteSync')?.addEventListener('click', execute);
+    $('btnRefreshDashboard')?.addEventListener('click', refresh);
+    refresh();
   }
 
-  function appendLog(message) {
-    const log = byId('syncLog');
-    const entry = document.createElement('div');
-    entry.textContent = message;
-    log.appendChild(entry);
-    log.scrollTop = log.scrollHeight;
-  }
-
-  function showSummary(summary) {
-    const summaryCard = byId('summaryCard');
-    if (summaryCard) summaryCard.classList.remove('d-none');
-
-    const tables = Array.isArray(summary.tables) ? summary.tables.length : (summary.tables || 0);
-    const conflicts = Array.isArray(summary.conflicts) ? summary.conflicts.length : (summary.conflicts || 0);
-    const duration = Number(summary.duration || 0).toFixed(3) + ' sec';
-
-    setText('sumDuration', duration);
-    setText('sumTables', tables);
-    setText('sumInserted', summary.inserted || 0);
-    setText('sumSkipped', summary.skipped || 0);
-    setText('sumModified', summary.modified || 0);
-    setText('sumFailed', summary.failed || 0);
-    setText('sumConflicts', conflicts);
-  }
-
-  function checkStatus() {
-    byId('onlineStatus').textContent = 'Checking.';
-    byId('localStatus').textContent = 'Checking.';
-
-    postAction('check_status')
-      .then(r => r.json())
-      .then(data => {
-        byId('onlineStatus').textContent = data.online ? 'Connected' : 'Unavailable';
-        byId('onlineStatus').className = 'fw-bold ' + (data.online ? 'text-success' : 'text-danger');
-        byId('onlineDot').style.background = data.online ? '#198754' : '#dc3545';
-        byId('onlineTime').textContent = data.online_time ? 'Last sync: ' + data.online_time : '';
-
-        byId('localStatus').textContent = data.local ? 'Connected' : 'Unavailable';
-        byId('localStatus').className = 'fw-bold ' + (data.local ? 'text-success' : 'text-danger');
-        byId('localDot').style.background = data.local ? '#198754' : '#dc3545';
-        byId('localTime').textContent = data.local_time ? 'Last sync: ' + data.local_time : '';
-
-        setButtonState(!(data.online && data.local));
-      })
-      .catch(() => {
-        byId('onlineStatus').textContent = 'Error';
-        byId('localStatus').textContent = 'Error';
-      });
-  }
-
-  function checkNewer() {
-    const banner = byId('detectBanner');
-    banner.className = 'alert alert-info mb-4';
-    banner.classList.remove('d-none');
-    banner.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Checking timestamps.';
-
-    postAction('check_newer')
-      .then(r => r.json())
-      .then(data => {
-        const icons = { in_sync: '?', local_newer: '??', online_newer: '??', error: '?' };
-        const classes = {
-          in_sync: 'alert-success',
-          local_newer: 'alert-warning',
-          online_newer: 'alert-info',
-          error: 'alert-danger'
-        };
-        banner.className = `alert ${classes[data.result] || 'alert-secondary'} mb-4`;
-        banner.innerHTML = `${icons[data.result] || ''} ${data.message}`;
-      });
-  }
-
-  function startStream(action) {
-    postAction(action)
-      .then(response => {
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        function read() {
-          reader.read().then(({ done, value }) => {
-            if (done) return;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop();
-
-            lines.forEach(line => {
-              if (line.startsWith('data: ')) {
-                try {
-                  updateProgress(JSON.parse(line.substring(6)));
-                } catch (e) {
-                  console.error(e);
-                }
-              }
-            });
-
-            read();
-          });
-        }
-
-        read();
-      })
-      .catch(err => {
-        showToast('Connection error: ' + err.message, 'danger');
-        checkStatus();
-      });
-  }
-
-  function startSync(direction) {
-    const msg = direction === 'push_to_online'
-      ? 'Push Local \u2192 Online?\n\nThis will OVERWRITE all online data with local data.'
-      : 'Push Online \u2192 Local?\n\nThis will OVERWRITE all local data with online data.';
-
-    if (!confirm(msg)) return;
-
-    resetProgressPanel();
-    startStream(direction);
-  }
-
-  function updateProgress(d) {
-    if (d.type === 'progress') {
-      const total = Number(d.total || 0);
-      const current = Number(d.current || 0);
-      const pct = total > 0 ? Math.round((current / total) * 100) : 0;
-
-      byId('syncTable').textContent = d.table || '-';
-      byId('syncCount').textContent = `${current} / ${total} Tables`;
-      byId('syncStatus').textContent = d.message || 'Syncing.';
-      byId('syncProgress').style.width = pct + '%';
-      byId('syncProgress').textContent = pct + '%';
-      appendLog(`[${d.table || '-'}] ${d.message || ''}`);
-      return;
-    }
-
-    if (d.type === 'done') {
-      byId('syncProgress').style.width = '100%';
-      byId('syncProgress').textContent = '100%';
-      byId('syncProgress').className = 'progress-bar bg-success';
-      byId('syncTitle').innerHTML = '<i class="bi bi-check-circle-fill me-2 text-success"></i>Sync Complete!';
-      byId('syncStatus').textContent = d.message || 'Synchronization completed.';
-      appendLog(d.message || 'Synchronization completed.');
-      showToast('Synchronization completed successfully!', 'success');
-      checkStatus();
-      setButtonState(false);
-      return;
-    }
-
-    if (d.type === 'summary' && d.summary) {
-      showSummary(d.summary);
-      return;
-    }
-
-    if (d.type === 'error') {
-      byId('syncProgress').className = 'progress-bar bg-danger';
-      byId('syncTitle').innerHTML = '<i class="bi bi-x-circle-fill me-2 text-danger"></i>Sync Failed!';
-      byId('syncStatus').textContent = d.message || 'Sync failed.';
-      appendLog(d.message || 'Sync failed.');
-      showToast(d.message || 'Sync failed.', 'danger');
-      setButtonState(false);
-    }
-  }
-
-  function startSmartMerge() {
-    if (!confirm('Run Smart Merge?\n\nNo records will be deleted.')) {
-      return;
-    }
-
-    resetProgressPanel();
-    startStream('smart_merge');
-  }
-
-  function bindSyncControls() {
-    const btnCheckNewer = byId('btnCheckNewer');
-    const btnPushOnline = byId('btnPushOnline');
-    const btnPushLocal = byId('btnPushLocal');
-    const btnSmartMerge = byId('btnSmartMerge');
-    const btnRefreshStatus = byId('btnRefreshStatus');
-
-    if (btnCheckNewer) btnCheckNewer.addEventListener('click', checkNewer);
-    if (btnPushOnline) btnPushOnline.addEventListener('click', () => startSync('push_to_online'));
-    if (btnPushLocal) btnPushLocal.addEventListener('click', () => startSync('push_to_local'));
-    if (btnSmartMerge) btnSmartMerge.addEventListener('click', startSmartMerge);
-    if (btnRefreshStatus) btnRefreshStatus.addEventListener('click', checkStatus);
-  }
-
-  function initSyncPage() {
-    bindSyncControls();
-    checkStatus();
-  }
-
-  if (document.readyState === 'loading') {
-    window.addEventListener('DOMContentLoaded', initSyncPage);
-  } else {
-    initSyncPage();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 })();

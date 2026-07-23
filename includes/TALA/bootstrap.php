@@ -26,6 +26,8 @@ require_once __DIR__ . '/src/Contracts/OperationHandlerInterface.php';
 require_once __DIR__ . '/src/Handlers/CreateTableHandler.php';
 require_once __DIR__ . '/src/Handlers/AddColumnHandler.php';
 require_once __DIR__ . '/src/Handlers/ModifyColumnHandler.php';
+require_once __DIR__ . '/src/Handlers/DropColumnHandler.php';
+require_once __DIR__ . '/src/Handlers/DropTableHandler.php';
 require_once __DIR__ . '/src/SqlColumnDefinitionBuilder.php';
 require_once __DIR__ . '/src/LoggerInterface.php';
 require_once __DIR__ . '/src/SyncSession.php';

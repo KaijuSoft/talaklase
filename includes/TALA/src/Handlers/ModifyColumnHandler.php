@@ -6,14 +6,15 @@ namespace Tala\Engine\Handlers;
 
 use PDO;
 use Tala\Engine\Contracts\OperationHandlerInterface;
+use Tala\Engine\Enums\ExecutionStatus;
 use Tala\Engine\Enums\OperationType;
 use Tala\Engine\SqlColumnDefinitionBuilder;
 
 /**
  * Handles MODIFY COLUMN operations in the schema execution pipeline.
  *
- * The handler executes SQL built from the execution payload. It does not
- * query schema metadata again.
+ * The handler validates the payload, builds the SQL statement, and executes
+ * it against the destination connection.
  */
 final class ModifyColumnHandler implements OperationHandlerInterface
 {
@@ -43,6 +44,8 @@ final class ModifyColumnHandler implements OperationHandlerInterface
     {
         $started = microtime(true);
         $sql = null;
+        $table = null;
+        $column = null;
 
         try {
             $details = $operation['details'] ?? [];
@@ -53,31 +56,31 @@ final class ModifyColumnHandler implements OperationHandlerInterface
 
             if ($table === '' || $column === '') {
                 return $this->buildResult(
-                    'failed',
-                    null,
-                    'Target table or column is missing.',
-                    $sql,
-                    $started
+                    ExecutionStatus::FAILED->value,
+                    $started,
+                    $table,
+                    $column,
+                    $sql
                 );
             }
 
             if (!is_array($sourceDefinition) || $sourceDefinition === []) {
                 return $this->buildResult(
-                    'failed',
-                    null,
-                    "Source definition for '{$table}.{$column}' is missing.",
-                    $sql,
-                    $started
+                    ExecutionStatus::FAILED->value,
+                    $started,
+                    $table,
+                    $column,
+                    $sql
                 );
             }
 
             if (!is_array($destinationDefinition)) {
                 return $this->buildResult(
-                    'failed',
-                    null,
-                    "Destination definition for '{$table}.{$column}' is missing.",
-                    $sql,
-                    $started
+                    ExecutionStatus::FAILED->value,
+                    $started,
+                    $table,
+                    $column,
+                    $sql
                 );
             }
 
@@ -86,17 +89,19 @@ final class ModifyColumnHandler implements OperationHandlerInterface
             $this->destination->exec($sql);
 
             return $this->buildResult(
-                'executed',
-                $sql,
-                null,
-                $started
+                ExecutionStatus::COMPLETED->value,
+                $started,
+                $table,
+                $column,
+                $sql
             );
         } catch (\Throwable $e) {
             return $this->buildResult(
-                'failed',
-                $sql,
-                $e->getMessage(),
-                $started
+                ExecutionStatus::FAILED->value,
+                $started,
+                $table,
+                $column,
+                $sql
             );
         }
     }
@@ -120,20 +125,23 @@ final class ModifyColumnHandler implements OperationHandlerInterface
     }
 
     /**
-     * @param string|null $reason
-     * @param string|null $sql
      * @return array<string, mixed>
      */
     private function buildResult(
         string $status,
-        ?string $sql,
-        ?string $reason,
-        float $started
+        float $started,
+        ?string $table = null,
+        ?string $column = null,
+        ?string $sql = null
     ): array {
         return [
             'status' => $status,
+            'operation' => OperationType::MODIFY_COLUMN->value,
+            'table' => $table,
+            'column' => $column,
             'sql' => $sql,
-            'error' => $reason,
+            'started_at' => date('Y-m-d H:i:s', (int) $started),
+            'finished_at' => date('Y-m-d H:i:s'),
             'duration_ms' => round((microtime(true) - $started) * 1000, 2),
         ];
     }

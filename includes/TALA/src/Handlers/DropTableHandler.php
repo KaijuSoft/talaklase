@@ -10,12 +10,9 @@ use Tala\Engine\Enums\ExecutionStatus;
 use Tala\Engine\Enums\OperationType;
 
 /**
- * Handles CREATE TABLE operations in the schema execution pipeline.
- *
- * The handler validates the payload, executes SQL already present in the
- * operation, and skips execution when the destination table already exists.
+ * Handles DROP TABLE operations in the schema execution pipeline.
  */
-final class CreateTableHandler implements OperationHandlerInterface
+final class DropTableHandler implements OperationHandlerInterface
 {
     private PDO $source;
 
@@ -27,74 +24,64 @@ final class CreateTableHandler implements OperationHandlerInterface
         $this->destination = $destination;
     }
 
-    /**
-     * Returns the supported operation type.
-     */
     public static function operation(): OperationType
     {
-        return OperationType::CREATE_TABLE;
+        return OperationType::DROP_TABLE;
     }
 
     /**
-     * Execute a CREATE TABLE operation.
-     *
      * @param array<string, mixed> $operation
      * @return array<string, mixed>
      */
     public function execute(array $operation): array
     {
         $started = microtime(true);
+        $table = null;
 
         try {
             $details = $operation['details'] ?? [];
             $table = (string) ($details['table'] ?? '');
-            $sql = $operation['sql'] ?? null;
 
-            if ($table !== '' && $this->tableExists($table)) {
+            if ($table === '') {
                 return $this->buildResult(
-                    ExecutionStatus::SKIPPED->value,
+                    ExecutionStatus::FAILED->value,
                     $started,
-                    $table,
-                    null,
-                    null
+                    $table
                 );
             }
 
-            if (empty($sql)) {
+            if (!$this->tableExists($table)) {
                 return $this->buildResult(
                     ExecutionStatus::SKIPPED->value,
                     $started,
-                    $table,
-                    null,
-                    null
+                    $table
                 );
             }
 
-            $this->destination->exec((string) $sql);
+            $sql = $this->buildSql($table);
+            $this->destination->exec($sql);
 
             return $this->buildResult(
                 ExecutionStatus::COMPLETED->value,
                 $started,
                 $table,
                 null,
-                (string) $sql
+                $sql
             );
         } catch (\Throwable $e) {
             return $this->buildResult(
                 ExecutionStatus::FAILED->value,
                 $started,
-                $table ?? null,
-                null,
-                null
+                $table
             );
         }
     }
-	
-	
 
-    /**
-     * Check whether the destination table already exists.
-     */
+    private function buildSql(string $table): string
+    {
+        return sprintf('DROP TABLE `%s`;', $table);
+    }
+
     private function tableExists(string $table): bool
     {
         $statement = $this->destination->prepare(
@@ -111,25 +98,18 @@ final class CreateTableHandler implements OperationHandlerInterface
     }
 
     /**
-     * Build a standardized execution result.
-     *
-     * @param string $status
-     * @param string|null $reason
-     * @param string|null $error
-     * @param float $started
      * @return array<string, mixed>
      */
     private function buildResult(
         string $status,
-        float $started
-        ,
+        float $started,
         ?string $table = null,
         ?string $column = null,
         ?string $sql = null
     ): array {
         return [
             'status' => $status,
-            'operation' => OperationType::CREATE_TABLE->value,
+            'operation' => OperationType::DROP_TABLE->value,
             'table' => $table,
             'column' => $column,
             'sql' => $sql,

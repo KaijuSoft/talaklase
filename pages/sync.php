@@ -1,185 +1,96 @@
 <?php
-// sync.php - display only, all logic is in sync_api.php
-// This file is included by index.php so no POST handling here
+
+declare(strict_types=1);
+
 require_once __DIR__ . '/../includes/auth.php';
 require_permission('sync_settings');
 ?>
 
-<div class="card mb-3">
-  <div class="card-header">
-    <h6 class="mb-0"><i class="bi bi-arrow-left-right me-2 text-primary"></i>Smart Sync Status</h6>
+<section class="mb-4" aria-labelledby="sync-dashboard-title">
+  <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+    <div>
+      <div class="text-muted small">Administration</div>
+      <h1 id="sync-dashboard-title" class="h4 mb-1">Database Synchronization</h1>
+      <p class="text-muted mb-0">Review schema changes before applying them.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <button class="btn btn-outline-primary" id="btnAnalyzeSchema" type="button">
+        <i class="bi bi-search me-1" aria-hidden="true"></i>Analyze Schema
+      </button>
+      <button class="btn btn-primary" id="btnExecuteSync" type="button" disabled>
+        <i class="bi bi-play-fill me-1" aria-hidden="true"></i>Execute Synchronization
+      </button>
+      <button class="btn btn-outline-secondary" id="btnRefreshDashboard" type="button">
+        <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Refresh
+      </button>
+    </div>
   </div>
-  <div class="card-body">
 
-    <!-- Connection Status Cards -->
-    <div class="row g-3 mb-4">
-      <div class="col-md-5">
-        <div class="stat-card">
-          <div class="d-flex align-items-center gap-3">
-            <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-cloud-fill"></i></div>
-            <div class="flex-fill">
-              <div class="stat-label">Online Database</div>
-              <div id="onlineStatus" class="fw-bold text-muted">Checking…</div>
-              <div id="onlineTime" class="text-muted" style="font-size:0.75rem"></div>
-            </div>
-            <div id="onlineDot" class="rounded-circle" style="width:12px;height:12px;background:#ccc"></div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-2 d-flex align-items-center justify-content-center">
-        <i class="bi bi-arrow-left-right fs-2 text-muted"></i>
-      </div>
-      <div class="col-md-5">
-        <div class="stat-card">
-          <div class="d-flex align-items-center gap-3">
-            <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-hdd-fill"></i></div>
-            <div class="flex-fill">
-              <div class="stat-label">Local Database</div>
-              <div id="localStatus" class="fw-bold text-muted">Checking…</div>
-              <div id="localTime" class="text-muted" style="font-size:0.75rem"></div>
-            </div>
-            <div id="localDot" class="rounded-circle" style="width:12px;height:12px;background:#ccc"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Auto-detect banner -->
-    <div id="detectBanner" class="d-none alert mb-4"></div>
-
-    <!-- Action buttons -->
-    <div class="d-flex flex-wrap gap-3 mb-4">
-      <button class="btn btn-outline-primary" id="btnCheckNewer" type="button">
-        <i class="bi bi-search me-1"></i> Check Which is Newer
-      </button>
-      <button class="btn btn-primary" id="btnPushOnline" type="button" disabled>
-        <i class="bi bi-cloud-upload-fill me-1"></i> Push Local → Online
-      </button>
-      <button class="btn btn-success" id="btnPushLocal" type="button" disabled>
-        <i class="bi bi-download me-1"></i> Push Online → Local
-      </button>
-	  <button
-    class="btn btn-warning"
-    id="btnSmartMerge"
-    type="button">
-
-    <i class="bi bi-cpu-fill me-1"></i>
-
-    Smart Merge (Beta)
-
-</button>
-      <button class="btn btn-outline-secondary" id="btnRefreshStatus" type="button">
-        <i class="bi bi-arrow-clockwise me-1"></i> Refresh Status
-      </button>
-    </div>
-
-    <!-- Progress panel (mirrors VB.NET SyncForm) -->
-    <div id="syncPanel" class="d-none border rounded p-4 bg-light">
-      <h6 id="syncTitle" class="mb-3">
-        <i class="bi bi-arrow-repeat me-2 text-primary"></i>Syncing Database…
-      </h6>
-      <div class="mb-1 d-flex justify-content-between">
-        <span class="text-muted" style="font-size:0.82rem">Current Table:</span>
-        <span id="syncTable" class="fw-semibold">—</span>
-      </div>
-      <div class="progress mb-2" style="height:22px">
-        <div id="syncProgress" class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
-          role="progressbar" style="width:0%">0%</div>
-      </div>
-      <div class="d-flex justify-content-between mb-3">
-        <span id="syncCount" class="text-muted" style="font-size:0.82rem">0 / 0 Tables</span>
-        <span id="syncStatus" class="text-muted" style="font-size:0.82rem">Initializing…</span>
-      </div>
-      <!-- Log output — mirrors VB.NET WriteLog -->
-      <div id="syncLog" class="border rounded bg-white p-2"
-        style="max-height:200px;overflow-y:auto;font-size:0.78rem;font-family:monospace"></div>
-		<hr class="my-3">
-
-<div id="summaryCard" class="card border-success d-none">
-
-    <div class="card-header bg-success text-white">
-
-        <i class="bi bi-clipboard-check me-2"></i>
-
-        Synchronization Summary
-
-    </div>
-
-    <div class="card-body">
-
-       <div id="summaryContent" class="row g-3">
-
-    <div class="col-md-3">
-        <div class="card border-primary h-100">
-            <div class="card-body text-center">
-                <small class="text-muted">Duration</small>
-                <h5 id="sumDuration" class="mb-0">0 sec</h5>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card border-success h-100">
-            <div class="card-body text-center">
-                <small class="text-muted">Tables</small>
-                <h5 id="sumTables" class="mb-0">0</h5>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-2">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <small class="text-muted">Inserted</small>
-                <h5 id="sumInserted" class="mb-0">0</h5>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-2">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <small class="text-muted">Skipped</small>
-                <h5 id="sumSkipped" class="mb-0">0</h5>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-2">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <small class="text-muted">Modified</small>
-                <h5 id="sumModified" class="mb-0">0</h5>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-2">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <small class="text-muted">Failed</small>
-                <h5 id="sumFailed" class="mb-0">0</h5>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-2">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <small class="text-muted">Conflicts</small>
-                <h5 id="sumConflicts" class="mb-0">0</h5>
-            </div>
-        </div>
-    </div>
-
-</div>
-
-    </div>
-
-</div>
-    </div>
-
+  <div id="syncAlert" class="alert d-none" role="alert"></div>
+  <div id="syncLoading" class="d-none text-muted mb-3" aria-live="polite">
+    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+    <span id="syncLoadingText">Working...</span>
   </div>
-</div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+      <div class="stat-card h-100">
+        <div class="d-flex align-items-center gap-3">
+          <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-database" aria-hidden="true"></i></div>
+          <div><div class="stat-label">Source Database</div><div id="sourceStatus" class="stat-value fs-5">Checking</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="stat-card h-100">
+        <div class="d-flex align-items-center gap-3">
+          <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-cloud" aria-hidden="true"></i></div>
+          <div><div class="stat-label">Destination Database</div><div id="destinationStatus" class="stat-value fs-5">Checking</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="stat-card h-100">
+        <div class="d-flex align-items-center gap-3">
+          <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-arrow-left-right" aria-hidden="true"></i></div>
+          <div><div class="stat-label">Synchronization Status</div><div id="syncStatusValue" class="stat-value fs-5">Checking</div><div id="pendingCount" class="text-muted small">- pending</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="stat-card h-100">
+        <div class="d-flex align-items-center gap-3">
+          <div class="stat-icon bg-info-subtle text-info"><i class="bi bi-stopwatch" aria-hidden="true"></i></div>
+          <div><div class="stat-label">Last Analysis</div><div id="lastAnalysisTime" class="stat-value fs-6">-</div><div id="lastAnalysisDuration" class="text-muted small">-</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <h2 class="h6 mb-0"><i class="bi bi-list-check me-2 text-primary" aria-hidden="true"></i>Execution Plan</h2>
+      <span id="planCount" class="badge text-bg-light">0 operations</span>
+    </div>
+    <div class="card-body p-0">
+      <div id="planEmpty" class="p-4 text-center text-muted">
+        <i class="bi bi-check-circle text-success fs-3 d-block mb-2" aria-hidden="true"></i>
+        <div>Database schemas are synchronized.</div>
+        <small>No pending operations.</small>
+      </div>
+      <div id="planTableWrap" class="table-responsive d-none">
+        <table class="table align-middle mb-0">
+          <thead><tr><th>Operation</th><th>Target</th><th>Severity</th><th>Reason</th><th>Status</th><th>SQL</th></tr></thead>
+          <tbody id="planTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="executionSummary" class="card mt-3 d-none" aria-live="polite">
+    <div class="card-header"><h2 class="h6 mb-0">Execution Result</h2></div>
+    <div class="card-body"><div class="row g-3" id="executionSummaryBody"></div></div>
+  </div>
+</section>
 
 <script src="assets/js/sync.js"></script>
