@@ -34,12 +34,55 @@ function talaApiEngine(): TalaEngine
     );
 }
 
-function talaApiResponse(array $data): never
-{
-    echo json_encode([
+/**
+ * Standard TALA API envelope.
+ *
+ * Legacy dashboard-facing fields may remain inside `data` during RC3.3.2.5
+ * for backward compatibility, but new consumers should prefer `summary`,
+ * `data`, `warnings`, `errors`, and `meta`.
+ *
+ * @param array<string, mixed> $summary
+ * @param array<string, mixed> $data
+ * @param array<int, string> $warnings
+ * @param array<int, string> $errors
+ * @param array<string, mixed> $meta
+ */
+function talaApiEnvelope(
+    array $summary = [],
+    array $data = [],
+    array $warnings = [],
+    array $errors = [],
+    array $meta = []
+): array {
+    return [
         'success' => true,
+        'summary' => $summary,
         'data' => $data,
-    ], JSON_UNESCAPED_SLASHES);
+        'warnings' => $warnings,
+        'errors' => $errors,
+        'meta' => $meta,
+    ];
+}
+
+/**
+ * @param array<string, mixed> $summary
+ * @param array<string, mixed> $data
+ * @param array<int, string> $warnings
+ * @param array<int, string> $errors
+ * @param array<string, mixed> $meta
+ */
+function talaApiResponse(
+    array $summary = [],
+    array $data = [],
+    array $warnings = [],
+    array $errors = [],
+    array $meta = []
+): never
+{
+    echo json_encode(
+        talaApiEnvelope($summary, $data, $warnings, $errors, $meta),
+        JSON_UNESCAPED_SLASHES
+    );
     exit;
 }
 
@@ -48,8 +91,16 @@ function talaApiError(Throwable $exception, int $status = 500): never
     http_response_code($status);
     echo json_encode([
         'success' => false,
-        'message' => $exception->getMessage(),
+        'summary' => [
+            'status' => 'error',
+        ],
+        'data' => [],
+        'warnings' => [],
         'errors' => [],
+        'meta' => [
+            'exception' => get_class($exception),
+        ],
+        'message' => $exception->getMessage(),
     ], JSON_UNESCAPED_SLASHES);
     exit;
 }

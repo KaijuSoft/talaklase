@@ -89,43 +89,12 @@ try {
     echo "----------------------------------------\n\n";
 
     foreach ($analysisOperations as $operation) {
-
-    $details = $operation['details'] ?? [];
-
-    echo "Operation\n";
-    echo strtoupper($operation['operation'] ?? '-') . "\n\n";
-
-    echo "Table\n";
-    echo ($details['table'] ?? '-') . "\n\n";
-
-    if (!empty($details['column'])) {
-        echo "Column\n";
-        echo $details['column'] . "\n\n";
-    }
-
-    if (!empty($details['source_definition'])) {
-        echo "Source Definition\n";
-        echo formatDefinition($details['source_definition']) . "\n\n";
-    }
-
-    if (!empty($details['destination_definition'])) {
-        echo "Destination Definition\n";
-        echo formatDefinition($details['destination_definition']) . "\n\n";
-    }
-
-    if (!empty($operation['sql'])) {
-        echo "SQL\n";
-        echo $operation['sql'] . "\n\n";
-    }
-
-    echo "----------------------------------------\n\n";
-	
-
         $details = $operation['details'] ?? [];
         $sourceDefinition = is_array($details['source_definition'] ?? null) ? $details['source_definition'] : [];
         $destinationDefinition = is_array($details['destination_definition'] ?? null) ? $details['destination_definition'] : [];
 
-        echo "MODIFIED COLUMN\n";
+        echo "Operation\n";
+        echo strtoupper($operation['operation'] ?? '-') . "\n\n";
         echo "Table\n";
         echo ($details['table'] ?? '-') . "\n\n";
         echo "Column\n";
@@ -140,16 +109,6 @@ try {
     }
 
     $result = $engine->executePlan();
-	$verification = $engine->analyzeSchema();
-
-	$remaining =
-    count($verification['execution_plan']['operations'] ?? []);
-
-	echo "========================================\n";
-	echo "POST EXECUTION VERIFICATION\n";
-	echo "========================================\n";
-	echo "Remaining Operations\n";
-	echo $remaining . "\n";
     $resultOperations = $result['operations'] ?? [];
 
     echo "========================================\n\n";

@@ -39,7 +39,7 @@ class ExecutionPlanBuilder
      * @param array<string, mixed> $validatedPlan
      * @return array<string, mixed>
      */
-    public function build(array $validatedPlan): array
+    public function buildExecutionPlan(array $validatedPlan): array
     {
         $executionPlan = [
             'status' => true,
@@ -48,6 +48,7 @@ class ExecutionPlanBuilder
                 'warnings' => 0,
                 'errors' => 0,
             ],
+            'queue' => [],
             'operations' => [],
             'warnings' => [],
             'errors' => [],
@@ -55,8 +56,9 @@ class ExecutionPlanBuilder
 
         foreach ($validatedPlan['operations'] ?? [] as $index => $operation) {
             $operationType = $operation['operation'] ?? null;
+            $dependencies = $this->normalizeDependencies($operation['dependencies'] ?? []);
 
-            $executionPlan['operations'][] = [
+            $executionPlan['queue'][] = [
                 'id' => sprintf('OP-%05d', $index + 1),
                 'category' => $operation['category'] ?? 'schema',
                 'operation' => $operationType,
@@ -67,15 +69,12 @@ class ExecutionPlanBuilder
                 'reason' => $operation['reason'] ?? null,
                 'sql' => $this->buildSql($operation),
                 'priority' => $this->priorityMap[$operationType] ?? 999,
-                'dependencies' => $operation['dependencies'] ?? [],
+                'dependencies' => $dependencies,
                 'status' => ExecutionStatus::PENDING->value,
             ];
         }
 
-        usort(
-            $executionPlan['operations'],
-            static fn (array $a, array $b): int => $a['priority'] <=> $b['priority']
-        );
+        $executionPlan['operations'] = $this->orderOperations($executionPlan['queue']);
 
         foreach ($executionPlan['operations'] as $index => &$operation) {
             $operation['id'] = sprintf('OP-%05d', $index + 1);
@@ -85,6 +84,17 @@ class ExecutionPlanBuilder
         $executionPlan['summary']['operations'] = count($executionPlan['operations']);
 
         return $executionPlan;
+    }
+
+    /**
+     * Backward-compatible alias used by older RC3 callers.
+     *
+     * @param array<string, mixed> $validatedPlan
+     * @return array<string, mixed>
+     */
+    public function build(array $validatedPlan): array
+    {
+        return $this->buildExecutionPlan($validatedPlan);
     }
 
     /**
@@ -105,5 +115,40 @@ class ExecutionPlanBuilder
                 ?? null,
             default => null,
         };
+    }
+
+    /**
+     * @param array<int, mixed> $dependencies
+     * @return array<int, string>
+     */
+    private function normalizeDependencies(array $dependencies): array
+    {
+        $normalized = [];
+
+        foreach ($dependencies as $dependency) {
+            $value = trim((string) $dependency);
+            if ($value !== '') {
+                $normalized[] = $value;
+            }
+        }
+
+        return array_values(array_unique($normalized));
+    }
+
+    /**
+     * Preserve deterministic execution order while keeping dependency
+     * information in the queued operations.
+     *
+     * @param array<int, array<string, mixed>> $queue
+     * @return array<int, array<string, mixed>>
+     */
+    private function orderOperations(array $queue): array
+    {
+        usort(
+            $queue,
+            static fn (array $a, array $b): int => [$a['priority'] ?? 999, $a['id'] ?? ''] <=> [$b['priority'] ?? 999, $b['id'] ?? '']
+        );
+
+        return $queue;
     }
 }

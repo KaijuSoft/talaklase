@@ -252,7 +252,7 @@ foreach ($this->syncOrder as $tableName) {
 		$validatedPlan = $validator->validate($mergePlan);
 		$validatedPlan = $planValidator->validate($validatedPlan);
 
-		$executionPlan = $planBuilder->build($validatedPlan);
+		$executionPlan = $planBuilder->buildExecutionPlan($validatedPlan);
 
 		$session
 			->setValidation($validatedPlan)

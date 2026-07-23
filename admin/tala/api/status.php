@@ -20,14 +20,32 @@ try {
         }
     }
 
-    talaApiResponse([
-        'source_connection' => $connections['source'] ?? false,
-        'destination_connection' => $connections['destination'] ?? false,
-        'engine_status' => $health['status'] ?? false,
-        'last_synchronization' => null,
-        'pending_operations' => count($analysis['execution_plan']['operations'] ?? []),
-        'duration_ms' => $analysis['duration_ms'] ?? 0,
-    ]);
+    $pendingOperations = count($analysis['execution_plan']['operations'] ?? []);
+
+    talaApiResponse(
+        [
+            'status' => $health['status'] ?? false,
+            'operation_count' => $pendingOperations,
+            'duration_ms' => $analysis['duration_ms'] ?? 0,
+            'source_connection' => $connections['source'] ?? false,
+            'destination_connection' => $connections['destination'] ?? false,
+        ],
+        [
+            // Legacy fields retained for dashboard compatibility.
+            'source_connection' => $connections['source'] ?? false,
+            'destination_connection' => $connections['destination'] ?? false,
+            'engine_status' => $health['status'] ?? false,
+            'last_synchronization' => null,
+            'pending_operations' => $pendingOperations,
+            'duration_ms' => $analysis['duration_ms'] ?? 0,
+        ],
+        [],
+        [],
+        [
+            'endpoint' => 'status',
+            'contract' => 'RC3.3.2.5',
+        ]
+    );
 } catch (Throwable $exception) {
     talaApiError($exception);
 }
