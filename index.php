@@ -208,6 +208,8 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
     <div class="content-area">
       <?php include "pages/{$page}.php"; ?>
     </div>
+
+    <?php include __DIR__ . '/includes/global_footer.php'; ?>
   </div>
 
 </div>
