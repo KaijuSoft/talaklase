@@ -1,0 +1,10 @@
+{
+    "version": "1.0.0",
+    "channel": "stable",
+    "engine": "2.0",
+    "release_date": "2026-07-29",
+    "minimum_php": "8.2",
+    "minimum_mysql": "10.4",
+    "download_url": "https://github.com/SunriseRaven/talaklase/releases/latest/download/talaklase-v1.0.0.zip",
+    "release_notes": "TALA Engine v1.0 - Architecture Complete"
+}
