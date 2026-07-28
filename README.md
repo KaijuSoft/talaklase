@@ -4,7 +4,7 @@ TalaKlase is an offline-first academic management system for student records, at
 
 Repository: KaijuSoft/TalaKlase
 
-Developed by KaijuSoft
+Developed by KaijuSoft 
 
 Founder & Owner: Julius Frederick C. Vendivil
 
