@@ -4,10 +4,10 @@
 **Status:** Architecture Complete  
 **Project:** TalaKlase  
 **Framework:** TALA Engine  
-**Repository:** SunriseRaven/talaklase  
+**Repository:** KaijuSoft/TalaKlase  
 **License:** GPL-3.0
 **Repository:**
-https://github.com/SunriseRaven/talaklase
+https://github.com/KaijuSoft/TalaKlase
 ---
 
 ## License

@@ -1,54 +1,61 @@
-# TalaKlase – PHP Web App
-Converted from VB.NET WinForms to PHP + MySQL
+# TalaKlase - PHP Web App
 
----
+TalaKlase is an offline-first academic management system for student records, attendance, grading, enrollment, teaching loads, and synchronization.
+
+Repository: KaijuSoft/TalaKlase
+
+Developed by KaijuSoft
+
+Founder & Owner: Julius Frederick C. Vendivil
+
+## Project Overview
+
+The project was converted from VB.NET WinForms to PHP + MySQL and is designed to stay maintainable, modular, and friendly to local-first deployments.
+
+## Features
+
+- Student, section, subject, and instructor management
+- Attendance tracking
+- Grade encoding
+- Academic year management
+- Instructor account management
+- TALA Engine synchronization
+- GitHub Releases-based updates for production
+
+## Screenshots
+
+> Placeholder for future screenshots.
 
 ## Requirements
-- PHP 7.4+ (with PDO and PDO_MySQL extensions)
+
+- PHP 8.2+
+- PDO and PDO_MySQL
 - MySQL 5.7+ or MariaDB
-- A web server: Apache (XAMPP/WAMP) or Nginx
+- Apache, Nginx, or XAMPP/WAMP
 
----
+## Installation
 
-## Setup Instructions
+1. Clone or copy the repository into your web root.
+2. Copy `includes/config.example.php` to `includes/config.php`.
+3. Set your database credentials in `includes/config.php`.
+4. Import the TalaKlase database schema.
+5. Open the site in your browser.
 
-### 1. Copy files
-Place the entire `talaklase/` folder inside your web server root:
-- XAMPP: `C:/xampp/htdocs/talaklase/`
-- WAMP:  `C:/wamp64/www/talaklase/`
-- Linux: `/var/www/html/talaklase/`
+## Configuration
 
-### 2. Configure the database
-Open `includes/db.php` and update the connection details:
+- `includes/config.php` is the single runtime configuration source.
+- `includes/config.example.php` is the safe template.
+- `includes/config.php` is ignored by Git and must not be committed.
 
-```php
-// Online DB (optional)
-$onlineDSN  = "mysql:host=<host>;port=3306;dbname=<dbname>;charset=utf8";
-$onlineUser = "<username>";
-$onlinePass = "<password>";
+## Updating
 
-// Local DB (fallback)
-$localDSN  = "mysql:host=localhost;dbname=talaklasedb;charset=utf8";
-$localUser = "root";
-$localPass = "";
-```
+Production installations use GitHub Releases through the Release Manager.
+Developer environments may continue using Git-based update checks.
 
-The app uses your **existing TalaKlase MySQL database** — the same one used by the VB.NET app. No changes to the database schema are needed.
+## First Login
 
-### 3. Open in browser
-Visit: `http://localhost/talaklase/`
-
-### 4. Login
-The app now uses role-based access control. On first run, it creates a `users` table and seeds one admin account:
-
-```text
-Username: admin
-Password: admin123
-```
-
-Change this password in the database before real use. Supported roles are `admin`, `instructor`, and `viewer`.
-
----
+The application keeps a first-install administrator bootstrap for clean deployments.
+That account is intended only for initial setup. Change the password immediately after deployment.
 
 ## Pages & Features
 
@@ -65,33 +72,32 @@ Change this password in the database before real use. Supported roles are `admin
 | Subjects | `?page=subjects` |
 | Instructors | `?page=instructors` |
 
----
-
-## Features
-- ✅ Add / Edit / Delete students with duplicate checking
-- ✅ Paginated student list with search
-- ✅ Attendance tracking (Present / Absent / Late) with bulk actions
-- ✅ Attendance history view with filters
-- ✅ Printable attendance summary report
-- ✅ Grade encoding (Participation, Written, Performance, Exam)
-- ✅ Manage Departments, Courses, Sections, Subjects, Instructors
-- ✅ Online DB + Local DB fallback (same logic as VB.NET app)
-- ✅ Mobile-friendly responsive layout
-- ✅ Dark sidebar navigation
-
----
-
 ## Tech Stack
-- **Backend:** PHP 7.4+ with PDO
-- **Frontend:** HTML5, Bootstrap 5.3, Bootstrap Icons
-- **Database:** MySQL (same schema as original VB.NET app)
-- **No framework required** — works on any basic PHP host
 
----
+- Backend: PHP 8.2 with PDO
+- Frontend: HTML5, Bootstrap 5.3, Bootstrap Icons
+- Database: MySQL or MariaDB
+
+## Architecture
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the current system design.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+See [LICENSE](LICENSE).
+
+## Credits
+
+- TalaKlase maintainers
+- KaijuSoft
+- The open-source PHP ecosystem
 
 ## Notes
-- The database schema is unchanged from the original VB.NET app
-- The online/local DB fallback mirrors the original VB.NET sync logic
-- The print attendance page uses browser print (`Ctrl+P`) — sidebar and filters are hidden automatically
 
-- [![Netlify Status](https://api.netlify.com/api/v1/badges/71aa2d30-6a4b-4117-9714-789173210ae8/deploy-status)](https://app.netlify.com/projects/talaklase/deploys)
+- The database schema remains compatible with the original VB.NET app.
+- Online/local database fallback mirrors the legacy sync behavior.
+- Print pages use browser printing.

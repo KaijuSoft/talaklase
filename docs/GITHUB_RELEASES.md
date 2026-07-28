@@ -23,7 +23,7 @@ talaklase.zip
 The default manifest URL is:
 
 ```text
-https://github.com/SunriseRaven/talaklase/releases/latest/download/manifest.json
+https://github.com/KaijuSoft/TalaKlase/releases/latest/download/manifest.json
 ```
 
 ## Manifest
@@ -38,7 +38,7 @@ The required field is a string `version`. Supported fields are:
     "release_date": "2026-07-29",
     "minimum_php": "8.2",
     "minimum_mysql": "10.4",
-    "download_url": "https://github.com/SunriseRaven/talaklase/releases/latest/download/talaklase.zip",
+    "download_url": "https://github.com/KaijuSoft/TalaKlase/releases/latest/download/talaklase.zip",
     "release_notes": "Release notes"
 }
 ```

@@ -7,6 +7,8 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/academic_year.php';
 
+// First-install bootstrap credentials for a fresh local deployment.
+// These remain for backward compatibility and must be changed after setup.
 const DEFAULT_ADMIN_USERNAME = 'Admin';
 const DEFAULT_ADMIN_PASSWORD = 'Admin@2026';
 

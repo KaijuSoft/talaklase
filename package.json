@@ -27,16 +27,16 @@
 },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/SunriseRaven/talaklase.git"
+    "url": "git+https://github.com/KaijuSoft/TalaKlase.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/SunriseRaven/talaklase/issues"
+    "url": "https://github.com/KaijuSoft/TalaKlase/issues"
   },
-  "homepage": "https://github.com/SunriseRaven/talaklase#readme",
+  "homepage": "https://github.com/KaijuSoft/TalaKlase#readme",
   "devDependencies": {
     "@playwright/test": "^1.61.1"
   }

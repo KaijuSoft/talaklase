@@ -1,6 +1,6 @@
 # TalaKlase System Architecture
 
-Version: RC1
+Version: RC3.5
 Status: Active
 Owner: KaijuSoft
 Lead Developer: Julius Frederick C. Vendivil
@@ -27,7 +27,9 @@ Primary database:
 Secondary database:
 - Remote MySQL (backup/synchronization)
 
-Synchronization is performed manually by administrators using the TALA Engine.
+Synchronization is performed by administrators using the TALA Engine.
+
+Production updates are handled separately through GitHub Releases.
 
 ---
 
@@ -67,7 +69,7 @@ No layer should bypass another.
             sync_api.php
                     │
                     ▼
-          TALA Engine RC1
+          TALA Engine RC3
                     │
                     ▼
           Local / Remote Database
@@ -209,6 +211,32 @@ sync.js
 ↓
 
 UI Update
+
+---
+
+# Release Manager
+
+Production installations use GitHub Releases instead of Git authentication.
+
+Workflow:
+
+1. Check installed version
+2. Read the release manifest
+3. Compare versions
+4. Download the release package
+5. Verify the package
+6. Apply the update
+
+Developer mode may continue to use Git-based update checks.
+
+---
+
+# Project Philosophy
+
+- Preserve backward compatibility where practical
+- Keep engine logic separate from UI and transport code
+- Prefer explicit configuration over hard-coded secrets
+- Keep TalaKlase offline-first and maintainable
 
 ---
 

@@ -1,24 +1,25 @@
-includes/db.php
+includes/config.php
+.env
+.env.local
+vendor/
+logs/
+storage/
+uploads/
+backups/
+cache/
 node_modules/
 
 *.log
 *.tmp
-
-.env
-.env.local
+*.bak
 
 .idea/
 .vscode/
 
 Thumbs.db
+Desktop.ini
 .DS_Store
-
-uploads/*
-!uploads/.gitkeep
-
 
 /*.zip
 *.sql
-*.bak
 *.old
-.env

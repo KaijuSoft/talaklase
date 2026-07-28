@@ -68,25 +68,31 @@ class ReleaseChecker
             throw new RuntimeException('Release manifest URL is invalid.');
         }
 
-        $context = stream_context_create([
-            'http' => [
-                'timeout' => 10,
-                'ignore_errors' => true,
-            ],
-            'https' => [
-                'timeout' => 10,
-                'ignore_errors' => true,
-            ],
-        ]);
+        $contents = false;
+        $responseCode = null;
+        $finalUrl = $url;
+        $curlError = null;
 
-        $contents = @file_get_contents($url, false, $context);
-        $responseCode = $this->responseCode($http_response_header ?? []);
+        if (function_exists('curl_init')) {
+            [$contents, $responseCode, $finalUrl, $curlError] = $this->readManifestWithCurl($url);
+        } else {
+            [$contents, $responseCode, $finalUrl] = $this->readManifestWithStream($url);
+        }
 
         if ($responseCode === 404) {
             throw new RuntimeException('No published GitHub Release was found.');
         }
 
         if ($contents === false || ($responseCode !== null && $responseCode >= 400)) {
+            if ($curlError !== null) {
+                error_log(sprintf(
+                    'ReleaseChecker::readManifest cURL error for %s (final URL: %s, HTTP %s): %s',
+                    $url,
+                    $finalUrl,
+                    (string) ($responseCode ?? 'unknown'),
+                    $curlError
+                ));
+            }
             throw new RuntimeException('Unable to download release manifest.');
         }
 
@@ -112,6 +118,69 @@ class ReleaseChecker
     }
 
     /**
+     * @return array{0:false|string,1:?int,2:string,3:?string}
+     */
+    private function readManifestWithCurl(string $url): array
+    {
+        $handle = curl_init($url);
+
+        if ($handle === false) {
+            return [false, null, $url, 'Unable to initialize cURL.'];
+        }
+
+        curl_setopt_array($handle, [
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_USERAGENT => 'TalaKlase Release Manager',
+            CURLOPT_HTTPHEADER => [
+                'Accept: application/json',
+            ],
+            CURLOPT_HEADER => true,
+        ]);
+
+        $response = curl_exec($handle);
+        $curlError = curl_error($handle);
+        $curlErrorNo = curl_errno($handle);
+        $responseCode = curl_getinfo($handle, CURLINFO_HTTP_CODE);
+        $finalUrl = (string) (curl_getinfo($handle, CURLINFO_EFFECTIVE_URL) ?: $url);
+        $headerSize = (int) (curl_getinfo($handle, CURLINFO_HEADER_SIZE) ?: 0);
+
+        curl_close($handle);
+
+        if ($response === false || $curlErrorNo !== 0) {
+            return [false, $responseCode ?: null, $finalUrl, $curlError !== '' ? $curlError : 'cURL request failed.'];
+        }
+
+        $body = is_string($response) ? substr($response, $headerSize) : false;
+
+        return [$body, $responseCode ?: null, $finalUrl, null];
+    }
+
+    /**
+     * @return array{0:false|string,1:?int,2:string}
+     */
+    private function readManifestWithStream(string $url): array
+    {
+        $context = stream_context_create([
+            'http' => [
+                'timeout' => 10,
+                'ignore_errors' => true,
+            ],
+            'https' => [
+                'timeout' => 10,
+                'ignore_errors' => true,
+            ],
+        ]);
+
+        $contents = @file_get_contents($url, false, $context);
+        $responseCode = $this->responseCode($http_response_header ?? []);
+        $finalUrl = $this->extractFinalUrl($http_response_header ?? [], $url);
+
+        return [$contents, $responseCode, $finalUrl];
+    }
+
+    /**
      * @param array<int, string> $headers
      */
     private function responseCode(array $headers): ?int
@@ -125,6 +194,20 @@ class ReleaseChecker
         }
 
         return $responseCode;
+    }
+
+    /**
+     * @param array<int, string> $headers
+     */
+    private function extractFinalUrl(array $headers, string $fallbackUrl): string
+    {
+        foreach (array_reverse($headers) as $header) {
+            if (preg_match('/^Location:\s*(.+)$/i', $header, $matches) === 1) {
+                return trim($matches[1]);
+            }
+        }
+
+        return $fallbackUrl;
     }
 
     private function normalizeVersion(string $version): string

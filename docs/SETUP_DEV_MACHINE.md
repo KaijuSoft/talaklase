@@ -80,7 +80,7 @@ git config --global --list
 # 3. Clone TalaKlase
 
 ```bash
-git clone https://github.com/SunriseRaven/talaklase.git
+git clone https://github.com/KaijuSoft/TalaKlase.git
 ```
 
 Switch to development

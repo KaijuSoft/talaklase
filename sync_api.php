@@ -7,35 +7,13 @@ use Tala\Engine\Exceptions\SyncException;
 require_once __DIR__ . '/includes/auth.php';
 require_permission('sync_settings');
 
-define('ONLINE_DSN',  "mysql:host=sql12.freesqldatabase.com;port=3306;dbname=sql12817970;charset=utf8mb4");
-define('ONLINE_USER', "sql12817970");
-define('ONLINE_PASS', "N9dIfCwPRj");
-define('LOCAL_DSN',   "mysql:host=127.0.0.1;port=3306;dbname=talaklasedb;charset=utf8mb4");
-define('LOCAL_USER',  "root");
-define('LOCAL_PASS',  "");
-
-/* define('ONLINE_DSN',  "mysql:host=gateway01.ap-southeast-1.prod.aws.tidbcloud.com;port=4000;dbname=talaklasedb;charset=utf8mb4");
-define('ONLINE_USER', "43PYUCXNx91RQ8v.root");
-define('ONLINE_PASS', "kxfO6GgjbTi7fbbH");
-define('LOCAL_DSN',   "mysql:host=127.0.0.1;port=3306;dbname=talaklasedb;charset=utf8mb4");
-define('LOCAL_USER',  "root");
-define('LOCAL_PASS',  ""); */
-
-$pdoOpts = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '+8:00'",
-];
-
 function getOnlineConn() {
-    global $pdoOpts;
-    $pdo = new PDO(ONLINE_DSN, ONLINE_USER, ONLINE_PASS, $pdoOpts);
+    $pdo = getOnlineConnection();
     $pdo->exec("SET time_zone = '+8:00'");
     return $pdo;
 }
 function getLocalConn() {
-    global $pdoOpts;
-    $pdo = new PDO(LOCAL_DSN, LOCAL_USER, LOCAL_PASS, $pdoOpts);
+    $pdo = getLocalConnection();
     $pdo->exec("SET time_zone = '+8:00'");
     return $pdo;
 }

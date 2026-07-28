@@ -100,7 +100,7 @@ function copyReleaseFiles(string $source, string $destination, array $preserved)
 
 $root = __DIR__;
 $manifestUrl = getenv('TALAKLASE_RELEASE_MANIFEST_URL')
-    ?: 'https://github.com/SunriseRaven/talaklase/releases/latest/download/manifest.json';
+    ?: 'https://github.com/KaijuSoft/TalaKlase/releases/latest/download/manifest.json';
 $temporary = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'talaklase_release_' . bin2hex(random_bytes(8));
 $zipPath = $temporary . '.zip';
 $extractPath = $temporary . DIRECTORY_SEPARATOR . 'package';

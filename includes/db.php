@@ -1,8 +1,10 @@
 <?php
-// TalaKlase - Database Connection
-// Reads connection settings from config/database.php
+declare(strict_types=1);
 
-$dbConfig = require __DIR__ . '/config/database.php';
+// TalaKlase - Database Connection
+// Reads connection settings from config.php
+
+$dbConfig = require __DIR__ . '/config.php';
 
 function buildPDO(array $cfg): PDO
 {

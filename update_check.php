@@ -28,7 +28,7 @@ function releaseErrorType(RuntimeException $error): string
 }
 
 $manifestUrl = getenv('TALAKLASE_RELEASE_MANIFEST_URL')
-    ?: 'https://github.com/SunriseRaven/talaklase/releases/latest/download/manifest.json';
+    ?: 'https://github.com/KaijuSoft/TalaKlase/releases/latest/download/manifest.json';
 
 try {
     $release = (new ReleaseChecker(__DIR__ . '/version.json', $manifestUrl))->check();
