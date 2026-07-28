@@ -43,4 +43,5 @@ require_once __DIR__ . '/src/ExecutionPlanBuilder.php';
 require_once __DIR__ . '/src/SchemaExecutor.php';
 require_once __DIR__ . '/src/DatabaseSnapshot.php';
 require_once __DIR__ . '/src/EngineSession.php';
+require_once __DIR__ . '/src/ConflictResolver.php';
 require_once __DIR__ . '/src/TalaEngine.php';

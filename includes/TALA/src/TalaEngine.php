@@ -63,6 +63,8 @@ final class TalaEngine
 
     private ?EngineSession $engineSession = null;
 
+    private readonly ConflictResolver $conflictResolver;
+
     /** @var array<int, string> Table sync order, resolved once at construction time. */
     private readonly array $syncOrder;
 
@@ -83,6 +85,7 @@ final class TalaEngine
         $this->destination = $destination;
         $this->tables = $tables;
         $this->logger = $logger;
+        $this->conflictResolver = new ConflictResolver();
 
         $this->validateConfiguration();
         $this->syncOrder = $this->resolveDependencyOrder($this->tables);
@@ -822,19 +825,9 @@ foreach ($this->tables as $table => $config) {
             $excluded[] = $primaryKey;
         }
 
-        $changed = [];
+        $source = array_diff_key($incoming, array_flip($excluded));
 
-        foreach ($incoming as $field => $value) {
-            if (in_array($field, $excluded, true) || !array_key_exists($field, $existing)) {
-                continue;
-            }
-
-            if ((string) $existing[$field] !== (string) $value) {
-                $changed[] = $field;
-            }
-        }
-
-        return $changed;
+        return $this->conflictResolver->detectChangedFields($source, $existing);
     }
 
     /**
