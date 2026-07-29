@@ -18,6 +18,15 @@ function getLocalConn() {
     return $pdo;
 }
 
+function getStudentCount(PDO $pdo): ?int {
+    try {
+        return (int) $pdo->query('SELECT COUNT(*) FROM `student`')->fetchColumn();
+    } catch (Throwable $e) {
+        error_log('Unable to count students during synchronization: ' . $e->getMessage());
+        return null;
+    }
+}
+
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 // ── Debug connection test ─────────────────────────────────────────────────────
@@ -120,8 +129,10 @@ if ($action === 'smart_merge') {
 
     try {
 
-        $srcCon = getLocalConn();
-        $dstCon = getOnlineConn();
+        $srcCon = getOnlineConn();
+        $dstCon = getLocalConn();
+        $sourceBefore = getStudentCount($srcCon);
+        $destinationBefore = getStudentCount($dstCon);
 
         sendEvent(
             'Starting Smart Merge...',
@@ -149,7 +160,7 @@ $engine->onProgress(
     ) {
 
         sendEvent(
-            "Inserted {$result['inserted']} | Skipped {$result['skipped']}",
+            "Inserted {$result['inserted']} | Updated {$result['modified']} | Skipped {$result['skipped']} | Failed {$result['failed']}",
             $table,
             $current,
             $total,
@@ -160,6 +171,30 @@ $engine->onProgress(
 );
 
 $session = $engine->syncDatabase();
+$summary = $session->toArray();
+$summary['students'] = [
+    'remote' => $sourceBefore,
+    'local_before' => $destinationBefore,
+    'source_count' => $sourceBefore,
+    'destination_before' => $destinationBefore,
+    'inserted' => 0,
+    'updated' => 0,
+    'modified' => 0,
+    'skipped' => 0,
+    'failed' => 0,
+    'operations' => [],
+    'local_after' => getStudentCount($dstCon),
+    'destination_after' => getStudentCount($dstCon),
+];
+foreach ($summary['tables'] as $table) {
+    if (($table['table'] ?? '') !== 'student') continue;
+    $summary['students']['inserted'] = (int) ($table['inserted'] ?? 0);
+    $summary['students']['updated'] = (int) ($table['modified'] ?? 0);
+    $summary['students']['modified'] = $summary['students']['updated'];
+    $summary['students']['skipped'] = (int) ($table['skipped'] ?? 0);
+    $summary['students']['failed'] = (int) ($table['failed'] ?? 0);
+    $summary['students']['operations'] = $table['operations'] ?? [];
+}
 
 sendEvent(
     'Synchronization completed successfully.',
@@ -172,7 +207,7 @@ sendEvent(
 echo "data: " . json_encode([
     'type'    => 'summary',
     'message' => 'Synchronization completed.',
-    'summary' => $session->toArray()
+    'summary' => $summary
 ]) . "\n\n";
 
 flush();

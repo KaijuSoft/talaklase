@@ -27,9 +27,9 @@
 
   function setBusy(value, label) {
     busy = value;
-    ['btnAnalyzeSchema', 'btnExecuteSync', 'btnRefreshDashboard'].forEach((id) => {
+    ['btnAnalyzeSchema', 'btnExecuteSync', 'btnRefreshDashboard', 'btnRestoreOnline'].forEach((id) => {
       const button = $(id);
-      if (button) button.disabled = value || (id === 'btnExecuteSync' && !plan.length);
+      if (button) button.disabled = value;
     });
     const loading = $('syncLoading');
     if (loading) loading.classList.toggle('d-none', !value);
@@ -84,7 +84,7 @@
     toggleClass('planEmpty', 'd-none', plan.length > 0);
     toggleClass('planTableWrap', 'd-none', plan.length === 0);
     const executeButton = $('btnExecuteSync');
-    if (executeButton) executeButton.disabled = busy || plan.length === 0;
+    if (executeButton) executeButton.disabled = busy;
     const body = $('planTableBody');
     if (!body) return;
     body.replaceChildren();
@@ -129,7 +129,7 @@
   }
 
   async function execute() {
-    if (busy || !plan.length) return;
+    if (busy) return;
     clearAlert();
     setBusy(true, 'Executing synchronization plan...');
     try {
@@ -144,10 +144,40 @@
     finally { setBusy(false); }
   }
 
+  async function restoreOnline() {
+    if (busy) return;
+    const confirmed = window.confirm(
+      'Warning: Restore Online Database will replace the online database with the trusted local copy. Continue?'
+    );
+    if (!confirmed) return;
+
+    clearAlert();
+    setBusy(true, 'Restoring the online database from local data...');
+    try {
+      const response = await fetch('sync_api.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ action: 'push_to_online' }),
+      });
+      const text = await response.text();
+      if (!response.ok || text.includes('"type":"error"')) {
+        throw new Error('The online database could not be restored.');
+      }
+      showAlert('Online Database restored successfully from the local copy.', 'success');
+      setBusy(false);
+      await refresh();
+    } catch (error) {
+      showAlert(error.message, 'danger');
+    } finally {
+      if (busy) setBusy(false);
+    }
+  }
+
   function init() {
     $('btnAnalyzeSchema')?.addEventListener('click', analyze);
     $('btnExecuteSync')?.addEventListener('click', execute);
     $('btnRefreshDashboard')?.addEventListener('click', refresh);
+    $('btnRestoreOnline')?.addEventListener('click', restoreOnline);
     refresh();
   }
 

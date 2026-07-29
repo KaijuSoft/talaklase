@@ -174,12 +174,23 @@ if ($sectionScope['clause'] !== '') {
 
 $where = $whereParts ? 'WHERE ' . implode(' AND ', $whereParts) : '';
 
-$countSql = "SELECT COUNT(*) FROM student INNER JOIN student_section ON student.st_id=student_section.st_id $where";
+$countSql = "SELECT COUNT(*) FROM student";
 $countStmt = $pdo->prepare($countSql);
-$countStmt->execute($params);
+$countStmt->execute();
 $totalRecords = $countStmt->fetchColumn();
 $totalPages   = max(1, ceil($totalRecords / $pageSize));
 $page         = min($page, $totalPages);
+
+$assignedSql = "SELECT COUNT(DISTINCT s.st_id)
+                FROM student s
+                INNER JOIN student_section ss ON s.st_id = ss.st_id";
+$assignedStudents = (int) $pdo->query($assignedSql)->fetchColumn();
+
+$unassignedSql = "SELECT COUNT(*)
+                  FROM student s
+                  LEFT JOIN student_section ss ON s.st_id = ss.st_id
+                  WHERE ss.st_id IS NULL";
+$unassignedStudents = (int) $pdo->query($unassignedSql)->fetchColumn();
 
 $sql = "SELECT student.st_id, student.student_no, student.st_lastname, student.st_name, student.st_middlename,
                student.st_suffix, student.st_gender, course.course_acronym,
@@ -266,13 +277,37 @@ $genders  = ['Male','Female'];
     </div>
   </div>
 
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="d-flex align-items-center gap-3">
+        <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-person-check-fill"></i></div>
+        <div>
+          <div class="stat-value"><?= $assignedStudents ?></div>
+          <div class="stat-label">Students Assigned to Sections</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="d-flex align-items-center gap-3">
+        <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-person-dash-fill"></i></div>
+        <div>
+          <div class="stat-value"><?= $unassignedStudents ?></div>
+          <div class="stat-label">Students Without Sections</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 <!-- Stats row -->
 
   <?php
   $maleWhere = $where ? $where . " AND student.st_gender='Male'" : "WHERE student.st_gender='Male'";
   $femaleWhere = $where ? $where . " AND student.st_gender='Female'" : "WHERE student.st_gender='Female'";
-  $maleSql = "SELECT COUNT(*) FROM student INNER JOIN student_section ON student.st_id=student_section.st_id $maleWhere";
-  $femaleSql = "SELECT COUNT(*) FROM student INNER JOIN student_section ON student.st_id=student_section.st_id $femaleWhere";
+  $maleSql = "SELECT COUNT(DISTINCT student.st_id) FROM student INNER JOIN student_section ON student.st_id=student_section.st_id $maleWhere";
+  $femaleSql = "SELECT COUNT(DISTINCT student.st_id) FROM student INNER JOIN student_section ON student.st_id=student_section.st_id $femaleWhere";
   $maleStmt = $pdo->prepare($maleSql);
   $femaleStmt = $pdo->prepare($femaleSql);
   $maleStmt->execute($params);

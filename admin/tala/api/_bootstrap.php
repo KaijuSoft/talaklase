@@ -28,8 +28,8 @@ function talaApiEngine(): TalaEngine
     $config = require __DIR__ . '/../../../includes/TALA/TalaKlaseConfig.php';
 
     return new TalaEngine(
-        getLocalConnection(),
         getOnlineConnection(),
+        getLocalConnection(),
         $config
     );
 }

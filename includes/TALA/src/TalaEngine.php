@@ -618,6 +618,7 @@ foreach ($this->tables as $table => $config) {
             'failed' => 0,
             'duration_ms' => 0.0,
             'conflicts' => [],
+            'operations' => [],
         ];
 
         $sourceRows = $this->fetchSourceRows($tableName);
@@ -627,11 +628,26 @@ foreach ($this->tables as $table => $config) {
 
         try {
             foreach ($sourceRows as $row) {
-                $result = $this->mergeRow($tableName, $config, $row);
+                $key = $this->extractColumnValues($this->lookupColumns($config), $row);
+
+                try {
+                    $result = $this->mergeRow($tableName, $config, $row);
+                } catch (Throwable $e) {
+                    $isMissingKey = str_starts_with($e->getMessage(), 'Business key missing:');
+                    $metrics[$isMissingKey ? 'skipped' : 'failed']++;
+                    $this->recordOperation($metrics, $tableName, $isMissingKey ? 'SKIP' : 'FAIL', $key, $e->getMessage(), $row);
+                    $this->logger?->log('error', sprintf(
+                        'Synchronization failed for %s row: %s',
+                        $tableName,
+                        $e->getMessage()
+                    ), ['table' => $tableName, 'business_key' => $key, 'row' => $row, 'exception' => $e]);
+                    continue;
+                }
 
                 switch ($result['status']) {
                     case 'inserted':
                         $metrics['inserted']++;
+                        $this->recordOperation($metrics, $tableName, 'INSERT', $key, 'Inserted', $row);
                         break;
 
                     case 'modified':
@@ -642,10 +658,19 @@ foreach ($this->tables as $table => $config) {
                             'business_key' => $result['business_key'],
                             'changed_fields' => $result['changed_fields'],
                         ];
+                        $this->recordOperation(
+                            $metrics,
+                            $tableName,
+                            'SKIP',
+                            $key,
+                            'Existing row differs; conflict requires manual review',
+                            $row
+                        );
                         break;
 
                     default: // 'duplicate'
                         $metrics['skipped']++;
+                        $this->recordOperation($metrics, $tableName, 'SKIP', $key, 'Already synchronized', $row);
                         break;
                 }
             }
@@ -654,13 +679,8 @@ foreach ($this->tables as $table => $config) {
         } catch (Throwable $e) {
             $this->destination->rollBack();
 
-            // Partial inserts within one table must never occur (Goal 1):
-            // the whole table's batch is treated as failed.
-            $metrics['inserted'] = 0;
-            $metrics['skipped'] = 0;
-            $metrics['modified'] = 0;
-            $metrics['conflicts'] = [];
-            $metrics['failed'] = $metrics['rows_read'];
+            $metrics['failed'] += max(0, $metrics['rows_read'] - count($metrics['operations']));
+            $this->recordOperation($metrics, $tableName, 'FAIL', [], 'Table transaction failed: ' . $e->getMessage());
 
             $this->logger?->log('error', sprintf(
                 'Synchronization failed for table "%s": %s',
@@ -672,6 +692,28 @@ foreach ($this->tables as $table => $config) {
         $metrics['duration_ms'] = round((microtime(true) - $start) * 1000, 3);
 
         return $metrics;
+    }
+
+    /** @param array<string, mixed> $metrics */
+    private function recordOperation(array &$metrics, string $table, string $operation, array $key, string $reason, array $row = []): void
+    {
+        $entry = ['table' => $table, 'operation' => $operation, 'business_key' => $key, 'reason' => $reason];
+        if ($table === 'student') {
+            $entry['student'] = [
+                'sgid' => null,
+                'student_number' => $row['student_no'] ?? null,
+                'last_name' => $row['lname'] ?? $row['last_name'] ?? null,
+                'first_name' => $row['fname'] ?? $row['first_name'] ?? null,
+            ];
+        }
+        $metrics['operations'][] = $entry;
+        error_log(sprintf(
+            'TALA %s %s %s: %s',
+            $table,
+            strtoupper($operation),
+            json_encode($key, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            $reason
+        ));
     }
 
     /**
@@ -727,6 +769,12 @@ foreach ($this->tables as $table => $config) {
 
         if ($columns === []) {
             return null;
+        }
+
+        foreach ($columns as $column) {
+            if (!array_key_exists($column, $row) || $row[$column] === null || trim((string) $row[$column]) === '') {
+                throw new SyncException(sprintf('Business key missing: %s', $column));
+            }
         }
 
         foreach ($columns as $column) {

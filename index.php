@@ -9,7 +9,7 @@ include 'includes/update_banner.php';
 date_default_timezone_set('Asia/Manila');
 
 $page = $_GET['page'] ?? 'students';
-$allowed = ['students','attendance_v2','view_attendance_v2','print_attendance_v2','grades','score_settings','courses','departments','instructors','instructor_accounts','sections','subjects','sync','db_backup','teaching_loads','academic_years','student_enrollment'];
+$allowed = ['students','attendance_v2','view_attendance_v2','print_attendance_v2','grades','score_settings','courses','departments','instructors','instructor_accounts','sections','subjects','sync','db_backup','database_integrity','teaching_loads','academic_years','student_enrollment'];
 if (!in_array($page, $allowed)) $page = 'students';
 
 $permission = page_permission($page);
@@ -31,6 +31,7 @@ $titles = [
   'print_attendance_v2'=>'Print Attendance','grades'=>'Grading Form','score_settings'=>'Score Settings',
   'courses'=>'Courses','departments'=>'Departments','instructors'=>'Instructors','instructor_accounts'=>'User Accounts',
   'sections'=>'Sections','subjects'=>'Subjects','sync'=>'Smart Sync','db_backup' =>'Database Backup','teaching_loads' => 'Teaching Loads','academic_years' => 'Academic Years',
+  'database_integrity' => 'Database Integrity',
   'student_enrollment' => 'Enroll Student',
 ];
 $currentTitle = $titles[$page] ?? 'Dashboard';
@@ -109,6 +110,11 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
    class="nav-link <?= $page==='db_backup'?'active':'' ?>">
     <i class="bi bi-database-fill-down"></i>
     Database Backup
+	</a>
+	<?php endif; ?>
+	<?php if (can('sync_settings')): ?>
+	<a href="?page=database_integrity" class="nav-link <?= $page==='database_integrity'?'active':'' ?>">
+	<i class="bi bi-shield-check"></i> Database Integrity
 	</a>
 	<?php endif; ?>
 

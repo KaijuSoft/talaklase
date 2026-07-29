@@ -99,5 +99,10 @@ See [LICENSE](LICENSE).
 ## Notes
 
 - The database schema remains compatible with the original VB.NET app.
+
 - Online/local database fallback mirrors the legacy sync behavior.
+
+- Smart Sync reads from the Online Database and writes to the Local Database.
+- Restore Online Database is the administrative Local-to-Online recovery workflow.
+
 - Print pages use browser printing.

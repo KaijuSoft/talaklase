@@ -155,7 +155,7 @@ Attendance and grading should never rely solely on section membership.
 
 RC1
 
-Manual synchronization.
+Smart Sync synchronizes Online to Local. Restore Online Database provides the controlled Local-to-Online recovery workflow.
 
 RC2
 

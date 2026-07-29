@@ -11,14 +11,17 @@ require_permission('sync_settings');
     <div>
       <div class="text-muted small">Administration</div>
       <h1 id="sync-dashboard-title" class="h4 mb-1">Database Synchronization</h1>
-      <p class="text-muted mb-0">Review schema changes before applying them.</p>
+      <p class="text-muted mb-0">Smart Sync keeps the local database aligned with Online. Restore Online Database publishes a trusted local copy.</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
       <button class="btn btn-outline-primary" id="btnAnalyzeSchema" type="button">
         <i class="bi bi-search me-1" aria-hidden="true"></i>Analyze Schema
       </button>
-      <button class="btn btn-primary" id="btnExecuteSync" type="button" disabled>
+      <button class="btn btn-primary" id="btnExecuteSync" type="button">
         <i class="bi bi-play-fill me-1" aria-hidden="true"></i>Execute Synchronization
+      </button>
+      <button class="btn btn-outline-warning" id="btnRestoreOnline" type="button">
+        <i class="bi bi-cloud-upload me-1" aria-hidden="true"></i>Restore Online Database
       </button>
       <button class="btn btn-outline-secondary" id="btnRefreshDashboard" type="button">
         <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Refresh

@@ -41,6 +41,7 @@ function page_permission(string $page): ?string {
         'subjects' => 'manage_subjects',
         'sync' => 'sync_settings',
 		'db_backup' => 'sync_settings',
+		'database_integrity' => 'sync_settings',
 		'teaching_loads' => 'manage_teaching_loads',
 		'academic_years' => 'manage_academic_years',
 		'student_enrollment' => 'manage_student_enrollment',
