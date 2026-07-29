@@ -209,6 +209,7 @@ $loads = $pdo->query("
 
     JOIN instructor i
         ON i.inst_id = ta.inst_id
+       AND i.is_active = 1
 
     WHERE ta.is_active = 1
 
@@ -249,6 +250,7 @@ $enrollments = $pdo->query("
 
     JOIN instructor i
         ON i.inst_id = ta.inst_id
+       AND i.is_active = 1
 
     ORDER BY student_name
 ")->fetchAll();

@@ -251,7 +251,7 @@ exit;
 }
 
 $courses = $pdo->query('SELECT course_id, course_acronym FROM course ORDER BY course_acronym')->fetchAll();
-$instructors = $pdo->query('SELECT inst_id, inst_name FROM instructor ORDER BY inst_name')->fetchAll();
+$instructors = $pdo->query('SELECT inst_id, inst_name FROM instructor WHERE is_active = 1 ORDER BY inst_name')->fetchAll();
 $subjects = $pdo->query(
     'SELECT sub_id, sub_code, sub_name
      FROM subject
@@ -296,6 +296,7 @@ if ($canManageAllSections) {
 
      LEFT JOIN instructor i
         ON i.inst_id = si.inst_id
+       AND i.is_active = 1
 
      GROUP BY
         s.sectionID,
@@ -336,6 +337,7 @@ $sections = $sectionsStmt->fetchAll();
 
      LEFT JOIN instructor i
         ON i.inst_id = si.inst_id
+       AND i.is_active = 1
 
      WHERE s.sectionID IN ($placeholders)
 

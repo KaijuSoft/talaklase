@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$user) {
                 $errors[] = 'No account found with that username.';
             } elseif (!(bool)$user['is_active']) {
-                $errors[] = 'This account has been deactivated. Contact your administrator.';
+                $errors[] = auth_archived_message();
             } elseif (!password_verify($password, $user['password_hash'])) {
                 $errors[] = 'Incorrect password. Please try again.';
             } else {

@@ -132,6 +132,21 @@ function ensureUsersTable(PDO $pdo): void {
         $pdo->exec("ALTER TABLE users ADD COLUMN inst_id INT(11) DEFAULT NULL AFTER role");
     }
 
+    $auditColumns = [
+        'archive_reason' => "ALTER TABLE users ADD COLUMN archive_reason TEXT NULL AFTER is_active",
+        'archived_at' => "ALTER TABLE users ADD COLUMN archived_at DATETIME NULL AFTER archive_reason",
+        'archived_by' => "ALTER TABLE users ADD COLUMN archived_by INT NULL AFTER archived_at",
+        'restored_at' => "ALTER TABLE users ADD COLUMN restored_at DATETIME NULL AFTER archived_by",
+        'restored_by' => "ALTER TABLE users ADD COLUMN restored_by INT NULL AFTER restored_at",
+        'restore_reason' => "ALTER TABLE users ADD COLUMN restore_reason TEXT NULL AFTER restored_by",
+    ];
+    foreach ($auditColumns as $column => $sql) {
+        $hasColumn = (bool)$pdo->query("SHOW COLUMNS FROM users LIKE '{$column}'")->fetchColumn();
+        if (!$hasColumn) {
+            $pdo->exec($sql);
+        }
+    }
+
     $hasUsernameUnique = (bool)$pdo->query("
         SELECT 1
         FROM information_schema.statistics
@@ -230,6 +245,10 @@ function require_permission_any(array $permissions): void {
         include __DIR__ . '/../403.php';
         exit;
     }
+}
+
+function auth_archived_message(): string {
+    return 'This account has been archived. Please contact the system administrator.';
 }
 
 
