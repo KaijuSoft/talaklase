@@ -283,8 +283,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-$filters = ['all', 'admins', 'instructors', 'archived'];
-$filter = in_array($_GET['filter'] ?? 'all', $filters, true) ? $_GET['filter'] : 'all';
+$filters = ['all', 'admin', 'instructor', 'archived'];
+$selectedFilter = $_GET['filter'] ?? 'all';
+$filter = in_array($selectedFilter, $filters, true)
+		? $selectedFilter
+		: 'all';
 
 $departments = $pdo->query('SELECT dept_id, dept_name FROM department ORDER BY dept_name')->fetchAll();
 $accountRows = $pdo->query("
@@ -304,10 +307,10 @@ $accountRows = $pdo->query("
 ")->fetchAll();
 
 switch ($filter) {
-    case 'admins':
+    case 'admin':
         $rows = array_values(array_filter($accountRows, static fn (array $row): bool => $row['role'] === 'admin'));
         break;
-    case 'instructors':
+    case 'instructor':
         $rows = array_values(array_filter($accountRows, static fn (array $row): bool => in_array($row['role'], ['instructor', 'instructor_admin'], true)));
         break;
     case 'archived':
@@ -319,8 +322,8 @@ switch ($filter) {
 
 $summary = [
     'total' => count($accountRows),
-    'admins' => count(array_filter($accountRows, static fn (array $row): bool => $row['role'] === 'admin')),
-    'instructors' => count(array_filter($accountRows, static fn (array $row): bool => in_array($row['role'], ['instructor', 'instructor_admin'], true))),
+    'admin' => count(array_filter($accountRows, static fn (array $row): bool => $row['role'] === 'admin')),
+    'instructor' => count(array_filter($accountRows, static fn (array $row): bool => in_array($row['role'], ['instructor', 'instructor_admin'], true))),
     'archived' => count(array_filter($accountRows, static fn (array $row): bool => (int) $row['is_active'] === 0)),
 ];
 $csrfToken = csrf_token();
@@ -339,15 +342,15 @@ $csrfToken = csrf_token();
   <div class="card-body border-bottom">
     <div class="row g-3">
       <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-label">Total Accounts</div><div class="stat-value fs-4"><?= (int) $summary['total'] ?></div></div></div>
-      <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-label">Administrator Accounts</div><div class="stat-value fs-4"><?= (int) $summary['admins'] ?></div></div></div>
-      <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-label">Instructor Accounts</div><div class="stat-value fs-4"><?= (int) $summary['instructors'] ?></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-label">Administrator Accounts</div><div class="stat-value fs-4"><?= (int) $summary['admin'] ?></div></div></div>
+      <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-label">Instructor Accounts</div><div class="stat-value fs-4"><?= (int) $summary['instructor'] ?></div></div></div>
       <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-label">Archived Accounts</div><div class="stat-value fs-4"><?= (int) $summary['archived'] ?></div></div></div>
     </div>
     <div class="d-flex flex-wrap gap-2 mt-3">
       <?php foreach ([
         'all' => 'All',
-        'admins' => 'Administrators',
-        'instructors' => 'Instructors',
+        'admin' => 'Administrators',
+        'instructor' => 'Instructors',
         'archived' => 'Archived',
       ] as $key => $label): ?>
         <a href="?page=instructor_accounts&filter=<?= htmlspecialchars($key) ?>" class="btn btn-sm <?= $filter === $key ? 'btn-primary' : 'btn-outline-secondary' ?>"><?= htmlspecialchars($label) ?></a>

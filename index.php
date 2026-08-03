@@ -5,6 +5,23 @@ require_once 'includes/auth.php';
 
 authBootstrap();
 require_login();
+
+/*
+|--------------------------------------------------------------------------
+| AJAX Requests
+|--------------------------------------------------------------------------
+| Handle Database Integrity AJAX before any HTML is rendered.
+| This prevents "Cannot modify header information" warnings when the
+| page returns JSON instead of a full HTML layout.
+*/
+if (
+    ($_GET['page'] ?? '') === 'database_integrity' &&
+    isset($_GET['action'])
+) {
+    require __DIR__ . '/pages/database_integrity.php';
+    exit;
+}
+
 include 'includes/update_banner.php';
 date_default_timezone_set('Asia/Manila');
 

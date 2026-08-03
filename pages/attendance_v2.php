@@ -156,8 +156,7 @@ if ($action === 'load_teaching_loads') {
             ON subj.sub_id = ta.sub_id
 
         INNER JOIN instructor i
-            ON i.inst_id = ta.inst_id
-           AND i.is_active = 1
+			ON i.inst_id = ta.inst_id
 
         WHERE ta.is_active = 1
           AND ta.ay_id = ?

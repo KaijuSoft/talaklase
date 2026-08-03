@@ -43,7 +43,7 @@ function integrity_reference_inspector_html(IntegrityChecker $checker, int $stud
     ?>
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h2 class="h6 mb-0">Reference Inspector</h2>
+        <h2 class="h6 mb-0">Impact Analysis</h2>
         <button class="btn btn-sm btn-outline-secondary" type="button" data-integrity-close-inspector>Close</button>
       </div>
       <div class="card-body">
@@ -80,10 +80,10 @@ if (($_GET['action'] ?? '') === 'duplicate_details') {
     ?>
     <div class="table-responsive">
       <table class="table align-middle mb-0">
-        <thead><tr><th>Record</th><th>Duplicate Match</th><th>Student ID</th><th>Student Number</th><th>Course</th><th>Gender</th><th>Status</th><th>References</th></tr></thead>
+        <thead><tr><th>Record</th><th>Duplicate Match</th><th>Student ID</th><th>Student Number</th><th>Course</th><th>Gender</th><th>Status</th><th>Dependent Records</th><th>Action</th></tr></thead>
         <tbody>
         <?php $duplicateGroup = null; foreach ($rows as $row): $group = strtolower(($row['st_lastname'] ?? '') . '|' . ($row['st_name'] ?? '') . '|' . ($row['st_middlename'] ?? '')); ?>
-          <tr><td><?= $duplicateGroup === $group ? 'Duplicate Record' : 'Primary Record' ?></td><td><?= $e($row['st_lastname'] . ', ' . $row['st_name'] . ' ' . $row['st_middlename']) ?></td><td><?= (int) $row['st_id'] ?></td><td><?= $e($row['student_no']) ?></td><td><?= $e($row['course_acronym']) ?></td><td><?= $e($row['st_gender']) ?></td><td><?= $e($row['status']) ?></td><td><?= (int) $row['reference_count'] ?></td><td><button class="btn btn-sm btn-outline-primary" type="button" data-integrity-student-id="<?= (int) $row['st_id'] ?>">Inspect</button></td></tr>
+          <tr><td><?= $duplicateGroup === $group ? 'Duplicate Record' : 'Primary' ?></td><td><?= $e($row['st_lastname'] . ', ' . $row['st_name'] . ' ' . $row['st_middlename']) ?></td><td><?= (int) $row['st_id'] ?></td><td><?= $e($row['student_no']) ?></td><td><?= $e($row['course_acronym']) ?></td><td><?= $e($row['st_gender']) ?></td><td><?php $statusClass = $row['reference_count'] > 0 ? 'bg-warning text-dark' : 'bg-success'; ?> <span class="badge <?= $statusClass ?>"><?= $e($row['status']) ?></span></td><td><?= (int) $row['reference_count'] ?></td><td><button class="btn btn-sm btn-outline-primary" type="button" data-integrity-student-id="<?= (int) $row['st_id'] ?>">Anaylze Impact</button></td></tr>
         <?php $duplicateGroup = $group; endforeach; ?>
         <?php if (!$rows): ?><tr><td colspan="8" class="text-center text-muted py-3">No potential duplicate students found.</td></tr><?php endif; ?>
         </tbody>
@@ -103,7 +103,7 @@ if (($_GET['action'] ?? '') === 'orphan_details') {
       <table class="table align-middle mb-0">
         <thead><tr><th>Student Number</th><th>Name</th><th>Course</th><th>Action</th></tr></thead>
         <tbody>
-        <?php foreach ($rows as $row): ?><tr><td><?= $e($row['student_no']) ?></td><td><?= $e($row['st_lastname'] . ', ' . $row['st_name'] . ' ' . $row['st_middlename']) ?></td><td><?= $e($row['course_acronym'] ?? '') ?></td><td><button class="btn btn-sm btn-outline-primary" type="button" data-integrity-student-id="<?= (int) $row['st_id'] ?>">Inspect</button></td></tr><?php endforeach; ?>
+        <?php foreach ($rows as $row): ?><tr><td><?= $e($row['student_no']) ?></td><td><?= $e($row['st_lastname'] . ', ' . $row['st_name'] . ' ' . $row['st_middlename']) ?></td><td><?= $e($row['course_acronym'] ?? '') ?></td><td><button class="btn btn-sm btn-outline-primary" type="button" data-integrity-student-id="<?= (int) $row['st_id'] ?>">Analyze Impact</button></td></tr><?php endforeach; ?>
         <?php if (!$rows): ?><tr><td colspan="4" class="text-center text-muted py-3">No orphan students found.</td></tr><?php endif; ?>
         </tbody>
       </table>
@@ -139,7 +139,7 @@ $metrics = $checker->referencingTables();
   <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
     <div>
       <div class="text-muted small">Administration</div>
-      <h1 id="integrity-title" class="h4 mb-1">Database Integrity</h1>
+      <h1 id="integrity-title" class="h4 mb-1">Database Maintenence Center</h1>
       <p class="text-muted mb-0">Detect duplicate, orphaned, and unassigned student records safely.</p>
     </div>
     <span class="badge text-bg-light align-self-center">Analysis only by default</span>
@@ -181,18 +181,21 @@ $metrics = $checker->referencingTables();
 
   <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center">
-      <h2 class="h6 mb-0">Reference Inspector</h2>
-      <button class="btn btn-sm btn-outline-primary" type="button" data-load-inspector>Load on demand</button>
+     <div class="alert alert-info mb-0">
+    <strong>Impact Analysis</strong><br>
+    Select a student from <strong>Duplicate Students</strong> or
+    <strong>Students Without Sections</strong> and click
+    <strong>Analyze Impact</strong> to load this panel.
+	</div>
     </div>
     <div class="card-body" id="referenceInspectorHost">
-      <div class="text-muted">Select a student from a detail panel to load the inspector.</div>
     </div>
   </div>
 
   <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center">
       <h2 class="h6 mb-0">Duplicate Students</h2>
-      <button class="btn btn-sm btn-outline-primary" type="button" data-load-duplicates>Load Duplicate Details</button>
+      <button class="btn btn-sm btn-outline-primary" type="button" data-load-duplicates>Analyze Duplicates</button>
     </div>
     <div class="card-body" id="duplicateDetailsHost">
       <div class="text-muted">Duplicate details will load after interaction.</div>
@@ -202,7 +205,7 @@ $metrics = $checker->referencingTables();
   <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center">
       <h2 class="h6 mb-0">Students Without Sections</h2>
-      <button class="btn btn-sm btn-outline-primary" type="button" data-load-orphans>Load Orphan Details</button>
+      <button class="btn btn-sm btn-outline-primary" type="button" data-load-orphans>Analyze Orphans</button>
     </div>
     <div class="card-body" id="orphanDetailsHost">
       <div class="text-muted">Orphan details will load after interaction.</div>

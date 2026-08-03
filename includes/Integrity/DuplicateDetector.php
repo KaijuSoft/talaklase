@@ -39,11 +39,16 @@ final class DuplicateDetector
         $ids = array_map(static fn (array $row): int => (int) $row['st_id'], $rows);
         $counts = $this->references->countsForStudents($ids);
 
-        foreach ($rows as &$row) {
-            $row['reference_count'] = $counts[(string) $row['st_id']] ?? 0;
-            $row['status'] = $row['reference_count'] === 0 ? 'Orphan candidate' : 'Referenced';
-        }
-        unset($row);
+       foreach ($rows as &$row) {
+			$row['reference_count'] = $counts[(string) $row['st_id']] ?? 0;
+
+			$hasDependencies = $row['reference_count'] > 0;
+
+			$row['status'] = $hasDependencies
+				? 'In Use'
+				: 'Safe to Archive';
+		}
+		unset($row);
 
         return $rows;
     }

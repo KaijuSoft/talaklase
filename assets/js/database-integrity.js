@@ -52,10 +52,7 @@
   function bind() {
     document.querySelectorAll('[data-load-duplicates]').forEach((button) => button.addEventListener('click', loadDuplicates));
     document.querySelectorAll('[data-load-orphans]').forEach((button) => button.addEventListener('click', loadOrphans));
-    document.querySelectorAll('[data-load-inspector]').forEach((button) => button.addEventListener('click', () => {
-      const host = document.getElementById('referenceInspectorHost');
-      if (host) host.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }));
+    
     bindInspectButtons();
   }
 

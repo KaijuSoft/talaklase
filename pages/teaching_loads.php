@@ -284,7 +284,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         FROM section_instructors si
         JOIN instructor i
             ON i.inst_id = si.inst_id
-           AND i.is_active = 1
+        INNER JOIN users u
+            ON u.inst_id = i.inst_id
+           AND u.is_active = 1
         WHERE si.sectionID = ?
         ORDER BY i.inst_name
     ");
@@ -327,7 +329,6 @@ $loads = $pdo->query("
 
     JOIN instructor i
         ON i.inst_id = ta.inst_id
-       AND i.is_active = 1
 
     ORDER BY
         s.section,
@@ -348,11 +349,13 @@ $loads = $pdo->query("
 	")->fetchAll();
 
 	$instructors = $pdo->query("
-    SELECT inst_id, inst_name
-    FROM instructor
-    WHERE is_active = 1
-    ORDER BY inst_name
-		")->fetchAll();
+    SELECT i.inst_id, i.inst_name
+    FROM instructor i
+    INNER JOIN users u
+        ON u.inst_id = i.inst_id
+       AND u.is_active = 1
+    ORDER BY i.inst_name
+	")->fetchAll();
 
 
 

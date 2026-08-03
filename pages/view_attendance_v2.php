@@ -75,8 +75,7 @@ $loads = $pdo->query("
         ON subj.sub_id = ta.sub_id
 
     INNER JOIN instructor i
-        ON i.inst_id = ta.inst_id
-       AND i.is_active = 1
+    ON i.inst_id = ta.inst_id
 
     WHERE ta.is_active = 1
 
@@ -170,9 +169,7 @@ INNER JOIN subject subj
     ON subj.sub_id =
        ta.sub_id
 INNER JOIN instructor i
-    ON i.inst_id =
-       ta.inst_id
-   AND i.is_active = 1
+    ON i.inst_id = ta.inst_id
 WHERE $whereStr
 GROUP BY student.st_id, section.sectionID, attendance.term
 ORDER BY student.st_lastname ASC, attendance.term ASC
