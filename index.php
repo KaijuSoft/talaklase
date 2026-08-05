@@ -22,7 +22,6 @@ if (
     exit;
 }
 
-include 'includes/update_banner.php';
 date_default_timezone_set('Asia/Manila');
 
 $page = $_GET['page'] ?? 'students';
@@ -37,11 +36,26 @@ if (!$permission || !can($permission)) {
 
 // If this is a POST (AJAX) request, just include the page and exit -
 // no HTML layout needed, the page will output JSON and call exit()
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Legacy page AJAX handlers post without an X-Requested-With header. Keep
+// their shortcut for compatibility, but let normal orphan deletion use PRG.
+$isOrphanDeletion = $page === 'database_integrity'
+    && ($_POST['action'] ?? '') === 'delete_orphan';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isOrphanDeletion) {
     require_permission($permission);
     include "pages/{$page}.php";
     exit;
 }
+
+// Normal orphan deletion must run before any layout or banner output so its
+// PRG redirect can modify the response headers safely.
+if ($isOrphanDeletion) {
+    require_permission($permission);
+    include 'pages/database_integrity.php';
+    exit;
+}
+
+include 'includes/update_banner.php';
 
 $titles = [
   'students'=>'Student Records','attendance_v2'=>'Attendance','view_attendance_v2'=>'View Attendance',

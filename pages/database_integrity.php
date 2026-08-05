@@ -122,8 +122,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     } else {
         try {
             $checker->deleteOrphan((int) ($_POST['student_id'] ?? 0));
-            $message = 'Orphan student deleted after reference verification.';
-            $messageType = 'success';
+            header('Location: ?page=database_integrity&deleted=1');
+            exit;
         } catch (Throwable $exception) {
             $message = $exception->getMessage();
             $messageType = 'danger';
@@ -133,6 +133,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
 
 $summary = $checker->summary();
 $metrics = $checker->referencingTables();
+if (($_GET['deleted'] ?? '') === '1') {
+    $message = 'Orphan student deleted after reference verification.';
+    $messageType = 'success';
+}
 ?>
 
 <section class="mb-4" aria-labelledby="integrity-title">
