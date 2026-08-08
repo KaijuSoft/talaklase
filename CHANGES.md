@@ -190,3 +190,35 @@ Primary focus:
 - Student Experience
 
 TALA Engine development should remain stable unless bug fixes or architectural improvements are required.
+
+
+---
+
+## RC3.5.21–RC3.5.22 — Current Development Updates
+
+### User Lifecycle
+
+- Added user account lifecycle management and account archiving.
+- Added lifecycle impact analysis so administrative changes can be evaluated before completion.
+- Finalized the related Post/Redirect/Get workflow.
+
+### Integrity and Recovery
+
+- Expanded the Database Integrity Center.
+- Improved duplicate and reference inspection.
+- Added deterministic backup source selection.
+- Improved integrity reporting and administrative presentation.
+
+### Synchronization
+
+- Polished the Smart Synchronization dashboard.
+- Improved synchronization state, progress, and workflow presentation while keeping the Engine → API → Frontend architecture intact.
+
+### Instructor Workflows
+
+- Continued instructor-scoped section, student, attendance, enrollment, and teaching-load behavior.
+- Preserved instructor-admin permissions and ownership rules.
+
+### Release State
+
+The development branch now contains the RC3.5.22 work following the v1.0.3 stability release. See `docs/PROJECT_STATUS.md` for the consolidated current state.

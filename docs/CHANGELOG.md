@@ -195,3 +195,65 @@ RC3.0.0  → First Executable Schema Synchronization
 - End-to-end schema synchronization
 - Successful CREATE TABLE execution
 - Proper execution reporting
+
+---
+
+## RC3.5.5 — Release Manager Verified
+
+### Release Infrastructure
+
+- GitHub Releases became the production update source.
+- Release manifest parsing and validation were implemented.
+- Version comparison and stable-channel handling were added.
+- Release packages are downloaded and validated as ZIP archives.
+- Automatic installation backups are created before replacement.
+- Package extraction, cleanup, and installed-version verification were implemented.
+- Runtime configuration and persistent application paths are preserved.
+
+### UI
+
+- Global application footer added.
+- Application version displayed dynamically.
+- TALA Engine version displayed dynamically.
+- KaijuSoft branding consolidated.
+
+
+## v1.0.3 / RC3.5 Stability Work
+
+### TALA Engine and Synchronization
+
+- Integrated schema execution into the current engine architecture.
+- Standardized execution results and API reporting.
+- Improved synchronization API handling.
+- Improved Smart Synchronization dashboard presentation and state handling.
+- Preserved the Engine → API → Frontend separation.
+
+### Database Integrity
+
+- Added `IntegrityChecker`.
+- Added `ReferenceInspector`.
+- Added `DuplicateDetector`.
+- Added structured `IntegrityReport` output.
+- Added a database integrity dashboard.
+- Added deterministic backup source selection.
+
+
+## RC3.5.21
+
+### User Lifecycle and Integrity Center
+
+- Added account archiving and user lifecycle handling.
+- Expanded instructor account administration.
+- Added impact analysis around lifecycle operations.
+- Improved integrity-center presentation and workflows.
+- Improved instructor, section, enrollment, attendance, and teaching-load interactions.
+
+## RC3.5.22
+
+### Final User Lifecycle and PRG Work
+
+- Finalized user lifecycle flow.
+- Finalized impact-analysis presentation and integration.
+- Improved Post/Redirect/Get behavior for administrative workflows.
+- Refined database integrity page behavior.
+- Refined navigation and management-page state handling.

@@ -1,290 +1,180 @@
 # TalaKlase Product Roadmap
 
-Version: RC1
-
-Owner: KaijuSoft
-
-Status: Active
+**Current Version:** 1.0.3
+**Current RC Line:** RC3.5.22
+**Owner:** KaijuSoft
+**Status:** Active Development
 
 ---
 
 # Vision
 
-TalaKlase aims to become a complete college-oriented Student Information System (SIS) capable of managing the entire student academic lifecycle while remaining lightweight, maintainable, and offline-first.
+TalaKlase aims to become a complete college-oriented Student Information System capable of managing the student academic lifecycle while remaining lightweight, maintainable, reliable, and offline-first.
 
-The project focuses on reliability, modularity, and ease of deployment for schools with limited infrastructure.
-
----
-
-# Guiding Principles
-
-- Offline-first
-- Modular architecture
-- College-oriented workflows
-- Data integrity first
-- Business-key synchronization
-- Maintainable codebase
-- Automated regression testing
+The original attendance-system scope has expanded into academic records, enrollment, teaching loads, synchronization, integrity, reporting, and controlled software updates.
 
 ---
 
-# Product Timeline
+# Completed Development Areas
 
-## RC1 (Current Release)
+## Academic Core
 
-Objective:
-
-Deliver a stable system suitable for pilot deployment.
-
-Features
-
-- Authentication
-- User Management
+- Authentication and user management
 - Departments
 - Courses
 - Subjects
 - Sections
-- Teaching Assignments
-- Student Records
-- Student Enrollment
+- Teaching loads / assignments
+- Student records
+- Student enrollment
 - Attendance
-- Attendance Printing
-- Smart Synchronization
-- Reports
+- Attendance printing and reporting
+- Grading
 
-Requirements
+## Instructor Access
 
-- Regression Testing
-- Playwright
-- Engine Freeze
-- Documentation
+- Instructor accounts
+- Instructor-admin role
+- Instructor-scoped sections
+- Instructor-scoped student records
+- Instructor-scoped attendance
+- Account lifecycle and archiving
 
-Status
+## Platform Infrastructure
 
-In Progress
+- Offline-first local database operation
+- Centralized runtime configuration
+- Online/local database fallback
+- GitHub Releases-based production updater
+- Automated backup during application updates
+- Version and release manifest handling
 
----
 
-## RC2
+## Synchronization and Integrity
 
-Objective
-
-Improve usability and instructor productivity.
-
-Planned Features
-
-- Dashboard redesign
-- Academic analytics
-- Better reports
-- Student search improvements
-- Bulk editing
-- Better filters
-- UI polish
-- Dark mode (optional)
-- Better mobile responsiveness
-
----
-
-## RC3
-
-Objective
-
-Complete academic record management.
-
-Planned Features
-
-- Gradebook redesign
-- Transcript generation
-- Academic history
-- Student academic profile
-- Dean's List
-- Academic standing
-- Graduation eligibility
+- TALA Engine schema inspection
+- Schema merge planning
+- Merge validation
+- Deterministic execution planning
+- Handler-based schema execution
+- Synchronization API
+- Smart Synchronization dashboard
+- Database integrity inspection
+- Reference inspection
+- Duplicate detection
+- Integrity reporting
+- Deterministic backup source selection
 
 ---
 
-## Version 1.0
+# Current RC3.5 Direction
 
-Objective
+RC3.5 focuses on stability and operational safety around the academic system.
 
-Production release.
+Current completed work includes:
 
-Requirements
+- v1.0.3 stability release
+- Release Manager verification
+- Smart Synchronization dashboard improvements
+- Database integrity center
+- User lifecycle management
+- Account archiving
+- Impact analysis
+- PRG workflow improvements
+- Instructor ownership and visibility rules
 
-- Stable deployment
-- Full regression coverage
-- Documentation complete
-- Multi-user validation
-- Pilot feedback incorporated
+The TALA Engine should remain stable while application-level workflows continue to improve.
+
 
 ---
 
-# Long-Term Vision
+# RC4 Roadmap
 
-## Academic Core
+## Objective
 
+Improve the day-to-day experience of instructors, administrators, and students without destabilizing the synchronization engine.
+
+## Priority Areas
+
+### User Experience
+
+- Interface polish
+- Clearer workflows
+- Consistent feedback and error states
+- Better navigation
+
+### Instructor Productivity
+
+- Faster student and section workflows
+- Better teaching-load workflows
+- Improved attendance workflows
+- Improved grading workflows
+- Better search and filtering
+
+### Student Experience
+
+- Clearer academic information
+- Improved enrollment visibility
+- Better attendance and grade presentation
+
+### Platform Quality
+
+- Performance improvements
+- Responsive design
+- Continued regression coverage
+- Database integrity improvements
+- Backup and recovery improvements
+
+
+---
+
+# Long-Term Academic Model
+
+The target academic model remains:
+
+```text
 Student
-
-↓
-
+  ↓
 Enrollment
-
-↓
-
+  ↓
 Teaching Assignment
-
-↓
-
+  ↓
 Attendance
-
-↓
-
+  ↓
 Grades
-
-↓
-
+  ↓
 Reports
+```
 
-All academic records should originate from Student Subject Enrollment.
+Attendance and grading should ultimately be driven by Student Subject Enrollment rather than section membership alone.
 
-Attendance and grading should never rely solely on section membership.
-
----
-
-# Synchronization Roadmap
-
-RC1
-
-Smart Sync synchronizes Online to Local. Restore Online Database provides the controlled Local-to-Online recovery workflow.
-
-RC2
-
-Scheduling support.
-
-RC3
-
-Conflict visualization.
-
-Future
-
-Automatic synchronization with approval workflow.
+This supports irregular students, cross-enrollees, and future curriculum flexibility.
 
 ---
 
-# Reporting Roadmap
+# Long-Term TALA Engine Direction
 
-Student Reports
+Future engine capabilities may include:
 
-Attendance Reports
+- Additional conflict-resolution policies
+- Rollback and recovery
+- Synchronization journal / audit history
+- Background synchronization
+- Distributed synchronization
+- Plugin architecture
+- Broader data synchronization support
 
-Grade Reports
-
-Enrollment Reports
-
-Instructor Workload Reports
-
-Department Reports
-
-School Analytics Dashboard
+These should be implemented incrementally and without violating the Analyze → Plan → Validate → Execute architecture.
 
 ---
 
-# Technical Roadmap
+# Out of Scope Until Deliberately Prioritized
 
-Frontend
+The following remain future considerations rather than current commitments:
 
-- Modular JavaScript
-- Shared UI components
-- Playwright coverage
-
-Backend
-
-- Stable API
-- PHP optimization
-- Better validation
-
-Database
-
-- Migration scripts
-- Version tracking
-- Backup tools
-
-Testing
-
-- Smoke tests
-- Regression tests
-- Performance tests
-
----
-
-# KaijuSoft Standards
-
-Every release must include:
-
-✓ Updated documentation
-
-✓ Updated regression matrix
-
-✓ Passing Playwright tests
-
-✓ Passing syntax checks
-
-✓ Changelog
-
----
-
-# Release Workflow
-
-Development
-
-↓
-
-Feature Complete
-
-↓
-
-Regression Testing
-
-↓
-
-Pilot Deployment
-
-↓
-
-Bug Fixes
-
-↓
-
-Release Candidate
-
-↓
-
-Production
-
----
-
-# Out of Scope
-
-The following are intentionally excluded until after Version 1.0:
-
-- Mobile application
+- Native mobile application
 - Parent portal
 - Student self-service portal
 - SMS gateway
 - AI-assisted grading
 - Cloud-only deployment
-
-These features may be considered after Version 1.0.
-
----
-
-# Success Criteria
-
-TalaKlase Version 1.0 is considered successful when:
-
-- Schools can manage an academic year without manual spreadsheets.
-- Attendance and grading workflows are fully digital.
-- Synchronization is reliable.
-- Data integrity is maintained.
-- Regression tests consistently pass.
-- The system remains maintainable for future development.

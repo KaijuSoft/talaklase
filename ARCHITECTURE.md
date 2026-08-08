@@ -488,3 +488,70 @@ Ensures consistent synchronization between independent databases.
 
 Status:
 Accepted.
+
+
+---
+
+# RC3.5 Application Architecture Extensions
+
+The RC3.5 line extends the original academic-management architecture with operational safety and administrative lifecycle controls.
+
+## User Lifecycle
+
+User administration now includes:
+
+- Instructor account creation and editing
+- Instructor-admin permissions
+- Account archiving
+- Lifecycle impact analysis
+- Instructor-scoped section ownership
+- Instructor-scoped student and attendance visibility
+
+The ownership relationship is represented by `section.inst_id`.
+
+## Integrity Layer
+
+Database integrity is now treated as a first-class application concern.
+
+Current integrity components include:
+
+- `IntegrityChecker`
+- `ReferenceInspector`
+- `DuplicateDetector`
+- `IntegrityReport`
+
+The integrity workflow is intended to identify duplicate records, broken or unexpected references, and operational impact before corrective actions are taken.
+
+## Backup and Recovery
+
+Backup selection has been made deterministic for integrity and recovery workflows.
+
+Application release installation also creates a timestamped backup before replacing application files.
+
+## Synchronization Dashboard
+
+The synchronization dashboard remains a presentation layer over `sync_api.php` and the TALA Engine. UI improvements must not move synchronization business logic into the frontend.
+
+## Release Manager
+
+Production application updates are release-based rather than Git-branch-based:
+
+```text
+GitHub Release
+    ↓
+Manifest
+    ↓
+Version Comparison
+    ↓
+Download
+    ↓
+Backup
+    ↓
+Validation
+    ↓
+Installation
+    ↓
+Verification
+```
+
+These RC3.5 extensions preserve the project's core separation-of-concerns and offline-first principles.

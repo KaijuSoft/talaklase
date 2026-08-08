@@ -106,3 +106,25 @@ See [LICENSE](LICENSE).
 - Restore Online Database is the administrative Local-to-Online recovery workflow.
 
 - Print pages use browser printing.
+
+
+## Current Project Status
+
+The current development branch is in the RC3.5.22 line and corresponds to the v1.0.3 stability release series.
+
+See [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for the consolidated current state of the application and TALA Engine.
+
+Recent work includes:
+
+- Instructor account administration and instructor-scoped access
+- User account lifecycle and archiving
+- Database integrity inspection and reporting
+- Duplicate and reference inspection
+- Deterministic backup source selection
+- Smart Synchronization dashboard improvements
+- TALA Engine schema execution architecture
+- GitHub Releases-based production updates
+- Release backup, validation, installation, and verification
+- Improved administrative PRG workflows
+
+The repository's older RC1/RC2 documents remain useful as historical architecture and development references. Current implementation status should be taken from `docs/PROJECT_STATUS.md` and the latest changelog entries.
