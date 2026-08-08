@@ -11,8 +11,8 @@ This document records the workflows that must be validated before a release. A r
 
 | Area | Workflow | Validation | Current documentation update |
 |---|---|---|---|
-| Authentication | Administrator login | Manual / Playwright | Not executed |
-| Authentication | Instructor login | Manual / Playwright | Not executed |
+| Authentication | Administrator login | Manual / Playwright | PASS - Playwright |
+| Authentication | Instructor login | Manual / Playwright | PASS - Playwright |
 | Users | Create instructor account | Manual / Playwright | Not executed |
 | Users | Edit instructor account | Manual / Playwright | Not executed |
 | Users | Archive user account | Manual / Playwright | Not executed |
@@ -79,3 +79,18 @@ A release should not be declared complete until:
 - Release installation is validated when updater code changes.
 
 This matrix intentionally reports the documentation update itself as **not executed** rather than claiming tests that were not run.
+
+
+## Maintenance-Specific Validation
+
+| Area | Workflow | Current status |
+|---|---|---|
+| Integrity | Duplicate merge preflight | PASS - controlled local fixture |
+| Integrity | Duplicate merge execution | PASS - controlled local fixture |
+| Integrity | Orphan deletion with reason | PASS - controlled local fixture |
+| Integrity | Maintenance backup generation | PASS - backup created and verified |
+| Integrity | Maintenance rollback | PASS - intentional trigger failure rolled back |
+| Integrity | Non-transactional table safety gate | Code path implemented; live gate validation pending |
+| Integrity | Maintenance audit log | PASS - audit entry verified |
+| Integrity | AJAX JSON response handling | PASS - endpoint/browser validation |
+| Users | Account filter default | Code path reviewed; live browser warning verification pending |

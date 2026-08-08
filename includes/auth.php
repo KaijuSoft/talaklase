@@ -24,7 +24,9 @@ function can_any(array $permissions): bool {
 
 function page_permission(string $page): ?string {
     $map = [
+        'analytics' => 'view_students',
         'students' => 'view_students',
+        'student_profile' => 'view_students',
         'students' => 'edit_students',
         'attendance_v2' => 'edit_attendance',
         'view_attendance_v2' => 'view_attendance',

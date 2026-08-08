@@ -15,7 +15,7 @@ const credentialCandidates = [
 ].filter(Boolean);
 
 function appPath(path) {
-  return `/talaklase_with_instructor/${path.replace(/^\/+/, '')}`;
+  return `/talaklase-dev/${path.replace(/^\/+/, '')}`;
 }
 
 async function expectLoginPage(page) {

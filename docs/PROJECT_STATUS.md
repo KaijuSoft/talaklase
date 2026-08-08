@@ -214,3 +214,31 @@ The repository is moving toward the RC4 direction, with emphasis on:
 - Continued integrity and synchronization reliability
 
 TALA Engine should remain stable except for bug fixes and deliberate architectural improvements.
+
+
+## Database Maintenance Implementation
+
+The Integrity Center now includes a controlled student-maintenance workflow.
+
+Implemented:
+
+- Duplicate merge preflight
+- Survivor/duplicate selection within a detected duplicate group
+- Field-difference preview before destructive action
+- Reference-impact preview
+- Required merge reason
+- Automatic local SQL backup before merge or orphan deletion
+- Transactional reference reassignment and duplicate deletion
+- Rollback on merge/delete failure
+- Non-transactional table safety gate
+- Maintenance audit log under `storage/integrity/maintenance.log`
+- Required deletion reason for orphan cleanup
+
+Destructive maintenance has not been executed against production data as part of this implementation. The code has been syntax-validated and the merge preflight was exercised in read-only mode; the current database had no duplicate group available for a live merge preflight.
+
+## Recent Reliability Fixes
+
+- Database Integrity AJAX actions are routed before the normal HTML layout in `index.php`, preventing banner/sidebar output from corrupting JSON responses.
+- Integrity JavaScript now validates JSON responses and reports endpoint failures clearly.
+- User-account filter handling defaults safely to `all` when no filter is supplied.
+- Runtime `version.json` is aligned with the documented v1.0.3 release line.

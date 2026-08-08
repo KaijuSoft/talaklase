@@ -9,9 +9,11 @@ require_once __DIR__ . '/../includes/Integrity/ReferenceInspector.php';
 require_once __DIR__ . '/../includes/Integrity/DuplicateDetector.php';
 require_once __DIR__ . '/../includes/Integrity/IntegrityReport.php';
 require_once __DIR__ . '/../includes/Integrity/IntegrityChecker.php';
+require_once __DIR__ . '/../includes/Integrity/MaintenanceManager.php';
 
 $pdo = getConnection();
 $checker = new IntegrityChecker($pdo);
+$maintenance = new MaintenanceManager($pdo, new ReferenceInspector($pdo));
 $e = static fn ($value): string => htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, 'UTF-8');
 
 function integrity_table_rows(array $rows, callable $rowRenderer, string $emptyMessage, int $colspan): string
@@ -47,14 +49,14 @@ function integrity_reference_inspector_html(IntegrityChecker $checker, int $stud
         <button class="btn btn-sm btn-outline-secondary" type="button" data-integrity-close-inspector>Close</button>
       </div>
       <div class="card-body">
-        <p class="mb-3"><strong><?= $e($student['st_lastname'] . ', ' . $student['st_name']) ?></strong> · <?= $e($student['student_no']) ?> · <?= $e($student['course_acronym']) ?></p>
+        <p class="mb-3"><strong><?= $e($student['st_lastname'] . ', ' . $student['st_name']) ?></strong> | <?= $e($student['student_no']) ?> | <?= $e($student['course_acronym']) ?></p>
         <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Table Name</th><th>Reference Count</th></tr></thead><tbody>
         <?php foreach ($references as $table => $count): ?><tr><td><code><?= $e($table) ?></code></td><td><?= (int) $count ?></td></tr><?php endforeach; ?>
         <?php if (!$references): ?><tr><td colspan="2" class="text-muted">No referencing tables discovered.</td></tr><?php endif; ?>
         </tbody></table></div>
         <?php if (array_sum($references) === 0): ?>
-          <form method="post" class="mt-3" onsubmit="return confirm('Delete this orphan student record?');">
-            <?= csrf_field() ?><input type="hidden" name="action" value="delete_orphan"><input type="hidden" name="student_id" value="<?= (int) $studentId ?>">
+          <form method="post" class="mt-3" onsubmit="return confirm('Delete this orphan student record? A backup will be created first.');">
+            <?= csrf_field() ?><input type="hidden" name="action" value="delete_orphan"><input type="hidden" name="student_id" value="<?= (int) $studentId ?>"><div class="mb-2"><label class="form-label small" for="orphanReason">Deletion reason</label><input class="form-control form-control-sm" id="orphanReason" name="reason" required maxlength="500" placeholder="Why is this orphan record safe to remove?"></div>
             <button class="btn btn-outline-danger btn-sm">Delete Orphan</button>
           </form>
         <?php else: ?><div class="alert alert-warning mt-3 mb-0">Deletion blocked because this student has references in other tables.</div><?php endif; ?>
@@ -64,6 +66,16 @@ function integrity_reference_inspector_html(IntegrityChecker $checker, int $stud
     return (string) ob_get_clean();
 }
 
+if (($_GET['action'] ?? '') === 'merge_preview') {
+    header('Content-Type: application/json; charset=utf-8');
+    try {
+        echo json_encode(['success'=>true,'plan'=>$maintenance->analyzeStudentMerge((int)($_GET['survivor_id']??0),(int)($_GET['duplicate_id']??0))]);
+    } catch (Throwable $exception) {
+        http_response_code(422);
+        echo json_encode(['success'=>false,'message'=>$exception->getMessage()]);
+    }
+    exit;
+}
 if (($_GET['action'] ?? '') === 'reference_inspector') {
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode([
@@ -83,7 +95,7 @@ if (($_GET['action'] ?? '') === 'duplicate_details') {
         <thead><tr><th>Record</th><th>Duplicate Match</th><th>Student ID</th><th>Student Number</th><th>Course</th><th>Gender</th><th>Status</th><th>Dependent Records</th><th>Action</th></tr></thead>
         <tbody>
         <?php $duplicateGroup = null; foreach ($rows as $row): $group = strtolower(($row['st_lastname'] ?? '') . '|' . ($row['st_name'] ?? '') . '|' . ($row['st_middlename'] ?? '')); ?>
-          <tr><td><?= $duplicateGroup === $group ? 'Duplicate Record' : 'Primary' ?></td><td><?= $e($row['st_lastname'] . ', ' . $row['st_name'] . ' ' . $row['st_middlename']) ?></td><td><?= (int) $row['st_id'] ?></td><td><?= $e($row['student_no']) ?></td><td><?= $e($row['course_acronym']) ?></td><td><?= $e($row['st_gender']) ?></td><td><?php $statusClass = $row['reference_count'] > 0 ? 'bg-warning text-dark' : 'bg-success'; ?> <span class="badge <?= $statusClass ?>"><?= $e($row['status']) ?></span></td><td><?= (int) $row['reference_count'] ?></td><td><button class="btn btn-sm btn-outline-primary" type="button" data-integrity-student-id="<?= (int) $row['st_id'] ?>">Anaylze Impact</button></td></tr>
+          <tr data-integrity-merge-row data-student-id="<?= (int) $row['st_id'] ?>" data-student-label="<?= $e($row['st_lastname'] . ', ' . $row['st_name'] . ' | ' . $row['student_no']) ?>" data-duplicate-group="<?= $e($group) ?>"><td><?= $duplicateGroup === $group ? 'Duplicate Record' : 'Primary' ?></td><td><?= $e($row['st_lastname'] . ', ' . $row['st_name'] . ' ' . $row['st_middlename']) ?></td><td><?= (int) $row['st_id'] ?></td><td><?= $e($row['student_no']) ?></td><td><?= $e($row['course_acronym']) ?></td><td><?= $e($row['st_gender']) ?></td><td><?php $statusClass = $row['reference_count'] > 0 ? 'bg-warning text-dark' : 'bg-success'; ?> <span class="badge <?= $statusClass ?>"><?= $e($row['status']) ?></span></td><td><?= (int) $row['reference_count'] ?></td><td><div class="d-flex flex-wrap gap-1"><button class="btn btn-sm btn-outline-primary" type="button" data-integrity-student-id="<?= (int) $row['st_id'] ?>">Analyze Impact</button><button class="btn btn-sm btn-outline-danger" type="button" data-prepare-merge>Prepare Merge</button></div></td></tr>
         <?php $duplicateGroup = $group; endforeach; ?>
         <?php if (!$rows): ?><tr><td colspan="8" class="text-center text-muted py-3">No potential duplicate students found.</td></tr><?php endif; ?>
         </tbody>
@@ -115,26 +127,28 @@ if (($_GET['action'] ?? '') === 'orphan_details') {
 
 $message = null;
 $messageType = 'info';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'merge_students') {
+    header('Content-Type: application/json; charset=utf-8');
+    if (!verify_csrf()) { http_response_code(403); echo json_encode(['success'=>false,'message'=>'Merge blocked: invalid security token.']); exit; }
+    try {
+        $result=$maintenance->mergeStudents((int)($_POST['survivor_id']??0),(int)($_POST['duplicate_id']??0),(string)($_POST['reason']??''),(($_POST['confirm_field_differences']??'0')==='1'));
+        echo json_encode(['success'=>true,'message'=>'Student records merged safely.','result'=>$result]);
+    } catch(Throwable $exception) { http_response_code(422); echo json_encode(['success'=>false,'message'=>$exception->getMessage()]); }
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_orphan') {
-    if (!verify_csrf()) {
-        $message = 'Deletion blocked: invalid security token.';
-        $messageType = 'danger';
-    } else {
-        try {
-            $checker->deleteOrphan((int) ($_POST['student_id'] ?? 0));
-            header('Location: ?page=database_integrity&deleted=1');
-            exit;
-        } catch (Throwable $exception) {
-            $message = $exception->getMessage();
-            $messageType = 'danger';
-        }
+    if (!verify_csrf()) { $message='Deletion blocked: invalid security token.'; $messageType='danger'; }
+    else {
+        try { $backup=$maintenance->deleteOrphan((int)($_POST['student_id']??0),(string)($_POST['reason']??'')); header('Location: ?page=database_integrity&deleted=1&backup='.urlencode($backup)); exit; }
+        catch(Throwable $exception) { $message=$exception->getMessage(); $messageType='danger'; }
     }
 }
 
 $summary = $checker->summary();
 $metrics = $checker->referencingTables();
 if (($_GET['deleted'] ?? '') === '1') {
-    $message = 'Orphan student deleted after reference verification.';
+    $message = 'Orphan student deleted after reference verification. Backup: ' . ($e($_GET['backup'] ?? ''));
     $messageType = 'success';
 }
 ?>
@@ -220,6 +234,33 @@ if (($_GET['deleted'] ?? '') === '1') {
     <div class="card-header"><h2 class="h6 mb-0">Discovered Student Reference Tables</h2></div>
     <div class="card-body"><div class="d-flex flex-wrap gap-2"><?php foreach ($metrics as $table): ?><span class="badge text-bg-light"><code><?= $e($table) ?></code></span><?php endforeach; ?><?php if (!$metrics): ?><span class="text-muted">No foreign-key references discovered.</span><?php endif; ?></div></div>
   </div>
+
+<div class="modal fade" id="studentMergeModal" tabindex="-1" aria-labelledby="studentMergeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header"><h2 class="modal-title fs-5" id="studentMergeModalLabel">Merge Duplicate Student</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+      <div class="modal-body">
+        <div class="alert alert-warning"><strong>Destructive operation.</strong> A local database backup is created before the merge. The operation is transactional and is rolled back if any reference update or delete fails.</div>
+        <input type="hidden" id="integrityCsrf" value="<?= $e(csrf_token()) ?>">
+        <div class="row g-3">
+          <div class="col-md-6"><label class="form-label" for="mergeSurvivor">Surviving record</label><select class="form-select" id="mergeSurvivor"></select><div class="form-text">This record remains. Its student fields are not overwritten.</div></div>
+          <div class="col-md-6"><label class="form-label" for="mergeDuplicate">Duplicate to remove</label><select class="form-select" id="mergeDuplicate"></select></div>
+        </div>
+        <div id="mergePreviewHost" class="mt-3"><div class="text-muted">Choose two records to preview the impact.</div></div>
+        <div id="mergeDifferenceConfirmation" class="alert alert-warning mt-3 d-none">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="confirmMergeFieldDifferences">
+            <label class="form-check-label" for="confirmMergeFieldDifferences">
+              <strong>I understand the field differences shown above.</strong> I confirm that the selected survivor's values will be retained and the duplicate's differing student fields will not be copied automatically.
+            </label>
+          </div>
+        </div>
+        <div class="mt-3"><label class="form-label" for="mergeReason">Merge reason</label><textarea class="form-control" id="mergeReason" rows="3" maxlength="500" required placeholder="Explain why these records are duplicates and why the selected survivor should remain."></textarea></div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="button" class="btn btn-danger" id="executeStudentMerge" disabled>Backup &amp; Merge</button></div>
+    </div>
+  </div>
+</div>
 </section>
 
 <script src="assets/js/database-integrity.js"></script>

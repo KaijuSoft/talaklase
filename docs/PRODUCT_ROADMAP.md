@@ -178,3 +178,24 @@ The following remain future considerations rather than current commitments:
 - SMS gateway
 - AI-assisted grading
 - Cloud-only deployment
+
+
+## RC3.5.23 Maintenance Safety Update
+
+The Database Integrity Center now moves beyond detection into controlled corrective maintenance.
+
+Implemented in the development branch:
+
+- Duplicate merge preflight and impact review
+- Survivor/duplicate selection
+- Required corrective-action reasons
+- Automatic local backup before destructive maintenance
+- Transactional reference reassignment
+- Rollback on failed merge/delete operations
+- Non-transactional table protection
+- Maintenance audit logging
+- Safer orphan deletion workflow
+- Integrity AJAX response hardening
+- Runtime version alignment to v1.0.3
+
+Live destructive merge testing remains a release-validation task and should only be performed against an intentionally selected duplicate pair after backup verification.

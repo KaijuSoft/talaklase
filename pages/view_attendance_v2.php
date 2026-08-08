@@ -155,8 +155,21 @@ $stmt = $pdo->prepare("SELECT
     attendance.term AS Term,
     COUNT(CASE WHEN attendance.status='Present' THEN 1 END) AS Present,
     COUNT(CASE WHEN attendance.status='Absent'  THEN 1 END) AS Absent,
-    COUNT(CASE WHEN attendance.status='Late'    THEN 1 END) AS Late,
-    COUNT(CASE WHEN attendance.status='Present' THEN 1 END) * 3 AS TotalHours,
+    COUNT(CASE WHEN attendance.status='Late' THEN 1 END) AS Late,
+    ROUND(SUM(CASE
+        WHEN attendance.status = 'Present' THEN
+            TIME_TO_SEC(TIMEDIFF(ta.end_time, ta.start_time)) / 3600.0
+        WHEN attendance.status = 'Late' THEN
+            GREATEST(
+                TIME_TO_SEC(TIMEDIFF(ta.end_time, ta.start_time)) / 60.0
+                - COALESCE(
+                    attendance.late_minutes,
+                    TIMESTAMPDIFF(MINUTE, CONCAT(attendance._date, ' ', ta.start_time), attendance.time_in)
+                ),
+                0
+            ) / 60.0
+        ELSE 0
+    END), 2) AS TotalHours,
     MIN(attendance._date) AS DateFrom,
     MAX(attendance._date) AS DateTo
 FROM student

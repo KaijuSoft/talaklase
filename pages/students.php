@@ -157,6 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $page     = max(1, intval($_GET['p'] ?? 1));
 $pageSize = 15;
 $search   = trim($_GET['q'] ?? '');
+$filterSection = (int)($_GET['section_id'] ?? 0);
 $offset   = ($page - 1) * $pageSize;
 
 $whereParts = [];
@@ -166,6 +167,10 @@ if ($search !== '') {
   $whereParts[] = "(student.student_no LIKE :q OR student.st_lastname LIKE :q OR student.st_name LIKE :q)";
   $params[':q'] = "%$search%";
 }
+if ($filterSection > 0) {
+  $whereParts[] = 'student_section.sectionID = :filter_section';
+  $params[':filter_section'] = $filterSection;
+}
 
 if ($sectionScope['clause'] !== '') {
   $whereParts[] = $sectionScope['clause'];
@@ -174,10 +179,15 @@ if ($sectionScope['clause'] !== '') {
 
 $where = $whereParts ? 'WHERE ' . implode(' AND ', $whereParts) : '';
 
-$countSql = "SELECT COUNT(*) FROM student";
+$countSql = "SELECT COUNT(DISTINCT student.st_id)
+             FROM student
+             INNER JOIN student_section ON student.st_id = student_section.st_id
+             INNER JOIN section ON section.sectionID = student_section.sectionID
+             $where";
 $countStmt = $pdo->prepare($countSql);
+foreach ($params as $k => $v) $countStmt->bindValue($k, $v);
 $countStmt->execute();
-$totalRecords = $countStmt->fetchColumn();
+$totalRecords = (int)$countStmt->fetchColumn();
 $totalPages   = max(1, ceil($totalRecords / $pageSize));
 $page         = min($page, $totalPages);
 
@@ -200,7 +210,7 @@ $sql = "SELECT student.st_id, student.student_no, student.st_lastname, student.s
         INNER JOIN student_section ON student.st_id = student_section.st_id
         INNER JOIN section ON section.sectionID = student_section.sectionID
         $where
-        ORDER BY student.st_lastname ASC
+        ORDER BY section.section ASC, student.st_lastname ASC, student.st_name ASC
         LIMIT :limit OFFSET :offset";
 
 $stmt = $pdo->prepare($sql);
@@ -356,6 +366,12 @@ $genders  = ['Male','Female'];
     <form method="GET" class="d-flex gap-2 align-items-center">
       <input type="hidden" name="page" value="students"/>
       <input type="search" name="q" class="form-control form-control-sm" placeholder="Search students…" value="<?= htmlspecialchars($search) ?>" style="width:220px"/>
+      <select name="section_id" class="form-select form-select-sm" style="width:190px">
+        <option value="0">All Sections</option>
+        <?php foreach ($sections as $sectionOption): ?>
+          <option value="<?= $sectionOption['sectionID'] ?>" <?= $filterSection === (int)$sectionOption['sectionID'] ? 'selected' : '' ?>><?= htmlspecialchars($sectionOption['section']) ?></option>
+        <?php endforeach; ?>
+      </select>
       <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-search"></i></button>
     </form>
     <div class="d-flex gap-2">
@@ -405,12 +421,18 @@ $genders  = ['Male','Female'];
       <tbody>
         <?php if (empty($students)): ?>
           <tr><td colspan="<?= can('edit_students') ? 11 : 10 ?>" class="text-center text-muted py-4"><i class="bi bi-inbox me-2"></i>No students found.</td></tr>
-        <?php else: foreach ($students as $i => $s): ?>
+        <?php else:
+          $lastSection = null;
+          foreach ($students as $i => $s):
+            if ($lastSection !== $s['section']):
+              $lastSection = $s['section'];
+        ?>
+          <tr class="table-primary"><td colspan="<?= can('edit_students') ? 11 : 10 ?>" class="fw-semibold py-2"><i class="bi bi-diagram-3-fill me-2"></i><?= htmlspecialchars($s['section']) ?></td></tr>
+        <?php endif; ?>
           <tr>
             <td class="text-muted"><?= $offset + $i + 1 ?></td>
             <td><?= htmlspecialchars($s['student_no']) ?></td>
-            <td><?= htmlspecialchars($s['st_lastname']) ?></td>
-            <td><?= htmlspecialchars($s['st_name']) ?></td>
+            <td colspan="2"><a class="fw-semibold text-decoration-none" href="?page=student_profile&st_id=<?= (int)$s['st_id'] ?>"><?= htmlspecialchars($s['st_lastname']) ?>, <?= htmlspecialchars($s['st_name']) ?></a></td>
             <td><?= htmlspecialchars($s['st_middlename']) ?></td>
             <td><?= htmlspecialchars($s['st_suffix']) ?></td>
             <td><span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle"><?= htmlspecialchars($s['course_acronym']) ?></span></td>

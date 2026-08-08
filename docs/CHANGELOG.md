@@ -257,3 +257,17 @@ RC3.0.0  → First Executable Schema Synchronization
 - Improved Post/Redirect/Get behavior for administrative workflows.
 - Refined database integrity page behavior.
 - Refined navigation and management-page state handling.
+
+
+## RC3.5.23 — Database Maintenance Safety
+
+- Added controlled duplicate-student merge workflow with preflight impact analysis.
+- Added required merge and orphan-deletion reasons.
+- Added automatic local backups before destructive maintenance.
+- Added transactional reference reassignment with rollback on failure.
+- Added protection against running destructive maintenance across non-transactional tables.
+- Added maintenance audit logging.
+- Hardened Database Integrity AJAX JSON handling.
+- Aligned runtime `version.json` with v1.0.3.
+
+Validation: PHP and JavaScript syntax checks passed. Destructive maintenance has not been executed against production data.

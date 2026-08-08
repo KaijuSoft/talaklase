@@ -9,9 +9,9 @@ module.exports = defineConfig({
     retries: 1,
 
     use: {
-        baseURL: 'http://localhost/talaklase_with_instructor',
+        baseURL: 'http://localhost/talaklase-dev',
         browserName: 'chromium',
-        headless: false,
+        headless: true,
         screenshot: 'only-on-failure',
         video: 'retain-on-failure',
         trace: 'retain-on-failure'
