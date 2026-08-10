@@ -99,6 +99,7 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css"/>
   <link rel="stylesheet" href="assets/css/style.css"/>
   <link rel="stylesheet" href="assets/css/talaklase-2.css?v=1.0.3"/>
+  <?php if ($page === 'students'): ?><script defer src="/talaklase-dev/assets/js/students.js?v=5"></script><?php endif; ?>
 </head>
 <body>
 <div id="sidebar-overlay"></div>
@@ -237,5 +238,12 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
 <script src="assets/js/app.js"></script>
+<?php if ($page === 'attendance_v2'): ?><script src="assets/js/attendance_v2.js?v=1"></script><?php endif; ?>
+<?php if ($page === 'grades'): ?><script src="assets/js/grades.js?v=1"></script><?php endif; ?>
+<?php if ($page === 'teaching_loads'): ?><script src="assets/js/teaching_loads.js?v=1"></script><?php endif; ?>
+<?php if ($page === 'student_enrollment'): ?><script src="assets/js/student_enrollment.js?v=1"></script><?php endif; ?>
+<?php if ($page === 'sections'): ?><script src="assets/js/sections.js?v=1"></script><?php endif; ?>
 </body>
 </html>
+
+<?php if ($page === 'instructor_accounts'): ?><script defer src="assets/js/instructor_accounts.js?v=1"></script><?php endif; ?><?php if ($page === 'analytics'): ?><script src="assets/js/analytics.js?v=1"></script><?php endif; ?>

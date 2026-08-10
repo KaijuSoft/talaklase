@@ -1,0 +1,54 @@
+<?php
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/auth.php';
+$pdo = getConnection();
+$currentUser = current_user();
+$isInstructorScoped = in_array($currentUser['role'] ?? '', ['instructor','instructor_admin'], true);
+$ownedSectionIds = current_user_owned_section_ids($pdo);
+$ayId = current_ay_id($pdo);
+$term = trim($_GET['term'] ?? '');
+$allowedTerms = ['Prelim','Midterm','Pre-finals','Finals'];
+if (!in_array($term, $allowedTerms, true)) $term = '';
+function analyticsQuery(PDO $pdo, string $sql, array $params=[]): array { $stmt=$pdo->prepare($sql); $stmt->execute($params); return $stmt->fetchAll(PDO::FETCH_ASSOC); }
+function analyticsScalar(PDO $pdo, string $sql, array $params=[]): float { $stmt=$pdo->prepare($sql); $stmt->execute($params); return (float)$stmt->fetchColumn(); }
+$secParams=[]; $secKeys=[];
+foreach ($ownedSectionIds as $i=>$id) { $k=':sec_'.$i; $secKeys[]=$k; $secParams[$k]=$id; }
+$secFilter = $isInstructorScoped ? ($secKeys ? ' AND ss.sectionID IN ('.implode(',',$secKeys).')' : ' AND 1=0') : '';
+$taFilter = $isInstructorScoped ? ($secKeys ? ' AND ta.sectionID IN ('.implode(',',$secKeys).')' : ' AND 1=0') : '';
+$attendanceTerm = $term !== '' ? ' AND a.term=:term' : '';
+$termParam = $term !== '' ? [':term'=>$term] : [];
+$populationParams = array_merge([':ay'=>$ayId],$secParams);
+$baseParams = array_merge($populationParams,$termParam);
+$totalStudents=(int)analyticsScalar($pdo,"SELECT COUNT(DISTINCT s.st_id) FROM student s INNER JOIN student_section ss ON ss.st_id=s.st_id WHERE ss.ay_id=:ay {$secFilter}",$populationParams);
+$totalSections=(int)($isInstructorScoped?count($ownedSectionIds):analyticsScalar($pdo,"SELECT COUNT(*) FROM section",[]));
+$totalSubjects=(int)($isInstructorScoped ? analyticsScalar($pdo,"SELECT COUNT(DISTINCT ta.sub_id) FROM teaching_assignments ta WHERE ta.ay_id=:ay {$taFilter}",array_merge([':ay'=>$ayId],$secParams)) : analyticsScalar($pdo,"SELECT COUNT(*) FROM subject",[]));
+$totalInstructors=(int)analyticsScalar($pdo,"SELECT COUNT(*) FROM instructor i WHERE EXISTS(SELECT 1 FROM users u WHERE u.inst_id=i.inst_id AND u.is_active=1)",[]);
+$totalLoads=(int)analyticsScalar($pdo,"SELECT COUNT(*) FROM teaching_assignments ta WHERE ta.ay_id=:ay {$taFilter}",array_merge([':ay'=>$ayId],$secParams));
+$totalAttendance=(int)analyticsScalar($pdo,"SELECT COUNT(*) FROM attendance a INNER JOIN student_section ss ON ss.st_id=a.st_id AND ss.ay_id=:ay WHERE 1=1 {$secFilter}{$attendanceTerm}",$baseParams);
+$statusRows=analyticsQuery($pdo,"SELECT a.status label,COUNT(*) total FROM attendance a INNER JOIN student_section ss ON ss.st_id=a.st_id AND ss.ay_id=:ay WHERE 1=1 {$secFilter}{$attendanceTerm} GROUP BY a.status ORDER BY total DESC",$baseParams);
+$present=0;$late=0;$absent=0; foreach($statusRows as $r){if(strcasecmp($r['label'],'Present')===0)$present=(int)$r['total'];if(strcasecmp($r['label'],'Late')===0)$late=(int)$r['total'];if(strcasecmp($r['label'],'Absent')===0)$absent=(int)$r['total'];}
+$presentRate=$totalAttendance?round($present/$totalAttendance*100,1):0;$lateRate=$totalAttendance?round($late/$totalAttendance*100,1):0;$absenceRate=$totalAttendance?round($absent/$totalAttendance*100,1):0;
+$unassigned=(int)($isInstructorScoped?0:analyticsScalar($pdo,"SELECT COUNT(*) FROM student s LEFT JOIN student_section ss ON ss.st_id=s.st_id WHERE ss.st_id IS NULL",[]));
+$genderRows=analyticsQuery($pdo,"SELECT COALESCE(s.st_gender,'Unknown') label,COUNT(DISTINCT s.st_id) total FROM student s INNER JOIN student_section ss ON ss.st_id=s.st_id AND ss.ay_id=:ay WHERE 1=1 {$secFilter} GROUP BY s.st_gender ORDER BY total DESC",$populationParams);
+$courseRows=analyticsQuery($pdo,"SELECT COALESCE(c.course_acronym,'Unknown') label,COUNT(DISTINCT s.st_id) total FROM student s INNER JOIN student_section ss ON ss.st_id=s.st_id AND ss.ay_id=:ay LEFT JOIN course c ON c.course_id=s.course_id WHERE 1=1 {$secFilter} GROUP BY c.course_acronym ORDER BY total DESC LIMIT 10",$populationParams);
+$yearRows=analyticsQuery($pdo,"SELECT COALESCE(ss.yearlvl,'Unknown') label,COUNT(DISTINCT s.st_id) total FROM student s INNER JOIN student_section ss ON ss.st_id=s.st_id AND ss.ay_id=:ay WHERE 1=1 {$secFilter} GROUP BY ss.yearlvl ORDER BY total DESC",$populationParams);
+$sectionRows=analyticsQuery($pdo,"SELECT se.section label,COUNT(*) total FROM attendance a INNER JOIN section se ON se.sectionID=a.sectionID INNER JOIN student_section ss ON ss.st_id=a.st_id AND ss.ay_id=:ay WHERE 1=1 {$secFilter}{$attendanceTerm} GROUP BY se.sectionID,se.section ORDER BY total DESC LIMIT 12",$baseParams);
+$trendRows=analyticsQuery($pdo,"SELECT DATE(a._date) label,COUNT(*) total FROM attendance a INNER JOIN student_section ss ON ss.st_id=a.st_id AND ss.ay_id=:ay WHERE a._date>=DATE_SUB(CURDATE(),INTERVAL 29 DAY) {$secFilter}{$attendanceTerm} GROUP BY DATE(a._date) ORDER BY label",$baseParams);
+$studentRisk=analyticsQuery($pdo,"SELECT s.st_id,s.student_no,CONCAT(s.st_lastname,', ',s.st_name) name,COALESCE(se.section,'Unassigned') section,COUNT(a.Att_ID) records,SUM(a.status='Absent') absent,SUM(a.status='Late') late,ROUND(SUM(a.status IN ('Present','Late'))/NULLIF(COUNT(a.Att_ID),0)*100,1) rate FROM student s INNER JOIN student_section ss ON ss.st_id=s.st_id AND ss.ay_id=:ay LEFT JOIN section se ON se.sectionID=ss.sectionID LEFT JOIN attendance a ON a.st_id=s.st_id AND a.sectionID=ss.sectionID {$attendanceTerm} WHERE 1=1 {$secFilter} GROUP BY s.st_id,se.sectionID HAVING records>0 AND (rate<75 OR absent>=3 OR late>=5) ORDER BY rate ASC,absent DESC,late DESC LIMIT 8",$baseParams);
+$instructorRows=analyticsQuery($pdo,"SELECT i.inst_name label,COUNT(DISTINCT ta.assignment_id) loads,COUNT(DISTINCT ta.sectionID) sections,COUNT(DISTINCT CASE WHEN a.Att_ID IS NOT NULL THEN CONCAT(ta.assignment_id,'|',a._date) END) submitted_sessions FROM instructor i INNER JOIN teaching_assignments ta ON ta.inst_id=i.inst_id AND ta.ay_id=:ay LEFT JOIN attendance a ON a.assignment_id=ta.assignment_id {$attendanceTerm} WHERE 1=1 {$taFilter} GROUP BY i.inst_id,i.inst_name ORDER BY loads DESC LIMIT 10",array_merge([':ay'=>$ayId],$secParams,$termParam));
+$loadRows=analyticsQuery($pdo,"SELECT CONCAT(se.section,' - ',subj.sub_code) label,i.inst_name instructor,COUNT(DISTINCT sa.st_id) students,COUNT(DISTINCT a._date) attendance_days FROM teaching_assignments ta INNER JOIN section se ON se.sectionID=ta.sectionID INNER JOIN subject subj ON subj.sub_id=ta.sub_id INNER JOIN instructor i ON i.inst_id=ta.inst_id LEFT JOIN student_assignments sa ON sa.assignment_id=ta.assignment_id AND sa.ay_id=:ay LEFT JOIN attendance a ON a.assignment_id=ta.assignment_id {$attendanceTerm} WHERE ta.ay_id=:ay {$taFilter} GROUP BY ta.assignment_id,se.section,subj.sub_code,i.inst_name ORDER BY students DESC LIMIT 10",array_merge([':ay'=>$ayId],$secParams,$termParam));
+
+$gradeRows=[];
+$gradeSql="SELECT subj.sub_code label,attendance.status attendance_status,p.par_one,p.par_two,p.par_three,p.par_four,p.par_five,sp.one_max p1,sp.two_max p2,sp.three_max p3,sp.four_max p4,sp.five_max p5,w.written_one,w.written_two,w.written_three,w.written_four,w.written_five,sw.one_max w1,sw.two_max w2,sw.three_max w3,sw.four_max w4,sw.five_max w5,pf.perf_one,pf.perf_two,pf.perf_three,pf.perf_four,pf.perf_five,sf.one_max f1,sf.two_max f2,sf.three_max f3,sf.four_max f4,sf.five_max f5,e.score exam_score,es.score_max exam_max FROM teaching_assignments ta JOIN subject subj ON subj.sub_id=ta.sub_id JOIN student_assignments sa ON sa.assignment_id=ta.assignment_id AND sa.ay_id=:ay LEFT JOIN attendance attendance ON attendance.st_id=sa.st_id AND attendance.assignment_id=ta.assignment_id AND attendance.term=IF(:gt='',attendance.term,:gt) LEFT JOIN class_record cr ON cr.st_id=sa.st_id AND cr.sectionID=ta.sectionID AND cr.sub_id=ta.sub_id LEFT JOIN class_record_participation crp ON crp.rec_id=cr.rec_id AND crp.term=IF(:pt='',crp.term,:pt) LEFT JOIN participation p ON p.par_id=crp.par_id LEFT JOIN score_settings sp ON sp.term=crp.term AND sp.component='participation' LEFT JOIN class_record_written crw ON crw.rec_id=cr.rec_id AND crw.term=IF(:wt='',crw.term,:wt) LEFT JOIN written w ON w.written_id=crw.written_id LEFT JOIN score_settings sw ON sw.term=crw.term AND sw.component='written' LEFT JOIN class_record_performance crpf ON crpf.rec_id=cr.rec_id AND crpf.term=IF(:ft='',crpf.term,:ft) LEFT JOIN performance pf ON pf.perf_id=crpf.perf_id LEFT JOIN score_settings sf ON sf.term=crpf.term AND sf.component='performance' LEFT JOIN class_record_exam cre ON cre.rec_id=cr.rec_id AND cre.term=IF(:et='',cre.term,:et) LEFT JOIN exam e ON e.exam_id=cre.exam_id LEFT JOIN exam_settings es ON es.term=cre.term WHERE ta.ay_id=:ay {$taFilter}";
+$gradeStmt=$pdo->prepare($gradeSql); $gradeStmt->execute(array_merge([':ay'=>$ayId,':gt'=>$term,':pt'=>$term,':wt'=>$term,':ft'=>$term,':et'=>$term],$secParams)); $gradeBuckets=[];
+foreach($gradeStmt->fetchAll(PDO::FETCH_ASSOC) as $gr){
+ $key=$gr['label'];$att=$gr['attendance_status']!==null?10:0;
+ $pmax=array_sum([(float)$gr['p1'],(float)$gr['p2'],(float)$gr['p3'],(float)$gr['p4'],(float)$gr['p5']]);$praw=array_sum([(float)$gr['par_one'],(float)$gr['par_two'],(float)$gr['par_three'],(float)$gr['par_four'],(float)$gr['par_five']]);$part=$pmax>0?$praw/$pmax*15:0;
+ $wmax=array_sum([(float)$gr['w1'],(float)$gr['w2'],(float)$gr['w3'],(float)$gr['w4'],(float)$gr['w5']]);$wraw=array_sum([(float)$gr['written_one'],(float)$gr['written_two'],(float)$gr['written_three'],(float)$gr['written_four'],(float)$gr['written_five']]);$written=$wmax>0?$wraw/$wmax*20:0;
+ $fmax=array_sum([(float)$gr['f1'],(float)$gr['f2'],(float)$gr['f3'],(float)$gr['f4'],(float)$gr['f5']]);$fraw=array_sum([(float)$gr['perf_one'],(float)$gr['perf_two'],(float)$gr['perf_three'],(float)$gr['perf_four'],(float)$gr['perf_five']]);$perf=$fmax>0?$fraw/$fmax*30:0;
+ $exam=(float)$gr['exam_max']>0?(float)$gr['exam_score']/(float)$gr['exam_max']*25:0;$gradeBuckets[$key][]=round($att+$part+$written+$perf+$exam,1);
+}
+foreach($gradeBuckets as $label=>$vals){$gradeRows[]=['label'=>$label,'average'=>round(array_sum($vals)/count($vals),1)];}usort($gradeRows,fn($a,$b)=>$b['average']<=>$a['average']);$gradeRows=array_slice($gradeRows,0,10);
+
+$maxCourse=max([1,...array_map(fn($r)=>(int)$r['total'],$courseRows)]);$maxGender=max([1,...array_map(fn($r)=>(int)$r['total'],$genderRows)]);$maxYear=max([1,...array_map(fn($r)=>(int)$r['total'],$yearRows)]);$maxSection=max([1,...array_map(fn($r)=>(int)$r['total'],$sectionRows)]);$maxTrend=max([1,...array_map(fn($r)=>(int)$r['total'],$trendRows)]);$maxStatus=max([1,...array_map(fn($r)=>(int)$r['total'],$statusRows)]);
+$ayName='Current Academic Year';try{$ayStmt=$pdo->prepare("SELECT ay_name FROM academic_year WHERE ay_id=? LIMIT 1");$ayStmt->execute([$ayId]);$ayName=$ayStmt->fetchColumn()?:$ayName;}catch(Throwable $e){}
