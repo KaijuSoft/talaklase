@@ -1,244 +1,9 @@
 <?php
-require_once __DIR__ . '/../includes/db.php';
-require_once __DIR__ . '/../includes/auth.php';
-require_permission('view_students');
-$pdo = getConnection();
-
-$currentUser = current_user();
-$isInstructorScoped = in_array($currentUser['role'] ?? '', ['instructor', 'instructor_admin'], true);
-$ownedSectionIds = current_user_owned_section_ids($pdo);
-$sectionScope = [
-  'clause' => '',
-  'params' => [],
-  'section_ids' => $ownedSectionIds,
-];
-
-if ($isInstructorScoped) {
-  if (empty($ownedSectionIds)) {
-    $sectionScope['clause'] = '1=0';
-  } else {
-    $placeholders = [];
-    foreach ($ownedSectionIds as $index => $sectionId) {
-      $key = ':sec' . $index;
-      $placeholders[] = $key;
-      $sectionScope['params'][$key] = $sectionId;
-    }
-    $sectionScope['clause'] = 'student_section.sectionID IN (' . implode(',', $placeholders) . ')';
-  }
-}
-
-function instructorCanUseSection(array $sectionScope, int $sectionId): bool {
-    return !empty($sectionScope['section_ids']) && in_array($sectionId, $sectionScope['section_ids'], true);
-}
-
-// ---------- ACTIONS ----------
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
-    header('Content-Type: application/json');
-
-    if ($action === 'add') {
-        require_permission('edit_students');
-        if ($isInstructorScoped && !instructorCanUseSection($sectionScope, (int)($_POST['section_id'] ?? 0))) {
-            echo json_encode(['success'=>false,'message'=>'You can only add students to sections you created.']);
-            exit;
-        }
-        try {
-            $pdo->beginTransaction();
-            $studentNo = trim($_POST['student_no'] ?? '');
-            // Duplicate check
-            $chk = $pdo->prepare("SELECT COUNT(*) FROM student WHERE st_lastname=? AND st_name=? AND st_middlename=? AND st_suffix=? AND course_id=?");
-            $chk->execute([
-                ucwords(strtolower($_POST['lastname'])),
-                ucwords(strtolower($_POST['firstname'])),
-                ucwords(strtolower($_POST['middlename'])),
-                ucwords(strtolower($_POST['suffix'])),
-                $_POST['course_id']
-            ]);
-            if ($chk->fetchColumn() > 0) {
-                $pdo->rollBack();
-                echo json_encode(['success'=>false,'message'=>'Duplicate student record found.']);
-                exit;
-            }
-            if ($studentNo !== '') {
-                $studentNoChk = $pdo->prepare("SELECT COUNT(*) FROM student WHERE student_no = ?");
-                $studentNoChk->execute([$studentNo]);
-                if ($studentNoChk->fetchColumn() > 0) {
-                    $pdo->rollBack();
-                    echo json_encode(['success'=>false,'message'=>'Student Number already exists.']);
-                    exit;
-                }
-            } else {
-                $studentNo = null;
-            }
-            $ins = $pdo->prepare("INSERT INTO student (student_no,st_lastname,st_name,st_middlename,st_suffix,st_gender,course_id) VALUES (?,?,?,?,?,?,?)");
-            $ins->execute([
-                $studentNo,
-                ucwords(strtolower($_POST['lastname'])),
-                ucwords(strtolower($_POST['firstname'])),
-                ucwords(strtolower($_POST['middlename'])),
-                ucwords(strtolower($_POST['suffix'])),
-                $_POST['gender'],
-                $_POST['course_id']
-            ]);
-            $stId = $pdo->lastInsertId();
-			$ayId = current_ay_id($pdo);
-
-            $sec = $pdo->prepare("INSERT INTO student_section (st_id,sectionID,yearlvl,ay_id) VALUES (?,?,?,?)");
-            $sec->execute([$stId, $_POST['section_id'], $_POST['year_level'], $ayId]);
-            $pdo->commit();
-            echo json_encode(['success'=>true,'message'=>'Student added successfully.']);
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            echo json_encode(['success'=>false,'message'=>$e->getMessage()]);
-        }
-        exit;
-    }
-
-    if ($action === 'update') {
-        require_permission('edit_students');
-        if ($isInstructorScoped && !instructorCanUseSection($sectionScope, (int)($_POST['section_id'] ?? 0))) {
-            echo json_encode(['success'=>false,'message'=>'You can only update students in sections you created.']);
-            exit;
-        }
-        try {
-            $pdo->beginTransaction();
-            $studentNo = trim($_POST['student_no'] ?? '');
-            if ($studentNo !== '') {
-                $studentNoChk = $pdo->prepare("SELECT COUNT(*) FROM student WHERE student_no = ? AND st_id <> ?");
-                $studentNoChk->execute([$studentNo, $_POST['st_id']]);
-                if ($studentNoChk->fetchColumn() > 0) {
-                    $pdo->rollBack();
-                    echo json_encode(['success'=>false,'message'=>'Student Number already exists.']);
-                    exit;
-                }
-            } else {
-                $studentNo = null;
-            }
-            $upd = $pdo->prepare("UPDATE student SET student_no=?,st_lastname=?,st_name=?,st_middlename=?,st_suffix=?,st_gender=?,course_id=? WHERE st_id=?");
-            $upd->execute([$studentNo,$_POST['lastname'],$_POST['firstname'],$_POST['middlename'],$_POST['suffix'],$_POST['gender'],$_POST['course_id'],$_POST['st_id']]);
-			$ayId = current_ay_id($pdo);
-			$updSec = $pdo->prepare("UPDATE student_section SET sectionID=?,yearlvl=? WHERE st_id=? AND ay_id=?");
-            $updSec->execute([$_POST['section_id'],$_POST['year_level'],$_POST['st_id'], $ayId]);
-            $pdo->commit();
-            echo json_encode(['success'=>true,'message'=>'Student updated.']);
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            echo json_encode(['success'=>false,'message'=>$e->getMessage()]);
-        }
-        exit;
-    }
-
-    if ($action === 'delete') {
-        require_permission('edit_students');
-        try {
-            if ($isInstructorScoped) {
-                $sectionCheck = $pdo->prepare("SELECT ss.sectionID FROM student_section ss WHERE ss.st_id=? LIMIT 1");
-                $sectionCheck->execute([$_POST['st_id']]);
-                $currentSectionId = (int)$sectionCheck->fetchColumn();
-                if (!instructorCanUseSection($sectionScope, $currentSectionId)) {
-                    echo json_encode(['success'=>false,'message'=>'You can only delete students from sections you created.']);
-                    exit;
-                }
-            }
-            $pdo->beginTransaction();
-            $pdo->prepare("DELETE FROM student_section WHERE st_id=?")->execute([$_POST['st_id']]);
-            $pdo->prepare("DELETE FROM student WHERE st_id=?")->execute([$_POST['st_id']]);
-            $pdo->commit();
-            echo json_encode(['success'=>true,'message'=>'Student deleted.']);
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            echo json_encode(['success'=>false,'message'=>$e->getMessage()]);
-        }
-        exit;
-    }
-}
-
-// ---------- LOAD DATA ----------
-$page     = max(1, intval($_GET['p'] ?? 1));
-$pageSize = 15;
-$search   = trim($_GET['q'] ?? '');
-$filterSection = (int)($_GET['section_id'] ?? 0);
-$offset   = ($page - 1) * $pageSize;
-
-$whereParts = [];
-$params = [];
-
-if ($search !== '') {
-  $whereParts[] = "(student.student_no LIKE :q OR student.st_lastname LIKE :q OR student.st_name LIKE :q)";
-  $params[':q'] = "%$search%";
-}
-if ($filterSection > 0) {
-  $whereParts[] = 'student_section.sectionID = :filter_section';
-  $params[':filter_section'] = $filterSection;
-}
-
-if ($sectionScope['clause'] !== '') {
-  $whereParts[] = $sectionScope['clause'];
-  $params = array_merge($params, $sectionScope['params']);
-}
-
-$where = $whereParts ? 'WHERE ' . implode(' AND ', $whereParts) : '';
-
-$countSql = "SELECT COUNT(DISTINCT student.st_id)
-             FROM student
-             INNER JOIN student_section ON student.st_id = student_section.st_id
-             INNER JOIN section ON section.sectionID = student_section.sectionID
-             $where";
-$countStmt = $pdo->prepare($countSql);
-foreach ($params as $k => $v) $countStmt->bindValue($k, $v);
-$countStmt->execute();
-$totalRecords = (int)$countStmt->fetchColumn();
-$totalPages   = max(1, ceil($totalRecords / $pageSize));
-$page         = min($page, $totalPages);
-
-$assignedSql = "SELECT COUNT(DISTINCT s.st_id)
-                FROM student s
-                INNER JOIN student_section ss ON s.st_id = ss.st_id";
-$assignedStudents = (int) $pdo->query($assignedSql)->fetchColumn();
-
-$unassignedSql = "SELECT COUNT(*)
-                  FROM student s
-                  LEFT JOIN student_section ss ON s.st_id = ss.st_id
-                  WHERE ss.st_id IS NULL";
-$unassignedStudents = (int) $pdo->query($unassignedSql)->fetchColumn();
-
-$sql = "SELECT student.st_id, student.student_no, student.st_lastname, student.st_name, student.st_middlename,
-               student.st_suffix, student.st_gender, course.course_acronym,
-               student_section.yearlvl, section.section
-        FROM student
-        INNER JOIN course ON student.course_id = course.course_id
-        INNER JOIN student_section ON student.st_id = student_section.st_id
-        INNER JOIN section ON section.sectionID = student_section.sectionID
-        $where
-        ORDER BY section.section ASC, student.st_lastname ASC, student.st_name ASC
-        LIMIT :limit OFFSET :offset";
-
-$stmt = $pdo->prepare($sql);
-foreach ($params as $k => $v) $stmt->bindValue($k, $v);
-$stmt->bindValue(':limit',  $pageSize, PDO::PARAM_INT);
-$stmt->bindValue(':offset', $offset,   PDO::PARAM_INT);
-$stmt->execute();
-$students = $stmt->fetchAll();
-
-// Dropdowns
-$courses  = $pdo->query("SELECT course_id, course_acronym FROM course ORDER BY course_acronym")->fetchAll();
-$sectionsSql = "SELECT sectionID, section FROM section";
-$sectionsParams = [];
-if ($isInstructorScoped) {
-  if (empty($sectionScope['section_ids'])) {
-    $sectionsSql .= " WHERE 1=0";
-  } else {
-    $sectionsSql .= " WHERE sectionID IN (" . implode(',', array_fill(0, count($sectionScope['section_ids']), '?')) . ")";
-    $sectionsParams = $sectionScope['section_ids'];
-  }
-}
-$sectionsSql .= " ORDER BY section";
-$sectionsStmt = $pdo->prepare($sectionsSql);
-$sectionsStmt->execute($sectionsParams);
-$sections = $sectionsStmt->fetchAll();
-$years    = ['1st Year','2nd Year','3rd Year','4th Year'];
-$genders  = ['Male','Female'];
+require_once __DIR__ . '/../includes/student_controller.php';
+$studentPageData = handleStudentPageRequest();
+extract($studentPageData, EXTR_SKIP);
 ?>
+
 
 <!-- Success import -->
 <?php if (!empty($_SESSION['import_success'])): ?>
@@ -311,21 +76,7 @@ $genders  = ['Male','Female'];
     </div>
   </div>
 
-<!-- Stats row -->
-
-  <?php
-  $maleWhere = $where ? $where . " AND student.st_gender='Male'" : "WHERE student.st_gender='Male'";
-  $femaleWhere = $where ? $where . " AND student.st_gender='Female'" : "WHERE student.st_gender='Female'";
-  $maleSql = "SELECT COUNT(DISTINCT student.st_id) FROM student INNER JOIN student_section ON student.st_id=student_section.st_id $maleWhere";
-  $femaleSql = "SELECT COUNT(DISTINCT student.st_id) FROM student INNER JOIN student_section ON student.st_id=student_section.st_id $femaleWhere";
-  $maleStmt = $pdo->prepare($maleSql);
-  $femaleStmt = $pdo->prepare($femaleSql);
-  $maleStmt->execute($params);
-  $femaleStmt->execute($params);
-  $male   = $maleStmt->fetchColumn();
-  $female = $femaleStmt->fetchColumn();
-  ?>
-  <div class="col-6 col-md-3">
+<!-- Stats row -->`r`n<div class="col-6 col-md-3">
     <div class="stat-card">
       <div class="d-flex align-items-center gap-3">
         <div class="stat-icon bg-info-subtle text-info"><i class="bi bi-gender-male"></i></div>
@@ -365,7 +116,7 @@ $genders  = ['Male','Female'];
   <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
     <form method="GET" class="d-flex gap-2 align-items-center">
       <input type="hidden" name="page" value="students"/>
-      <input type="search" name="q" class="form-control form-control-sm" placeholder="Search students…" value="<?= htmlspecialchars($search) ?>" style="width:220px"/>
+      <input type="search" name="q" class="form-control form-control-sm" placeholder="Search students..." value="<?= htmlspecialchars($search) ?>" style="width:220px"/>
       <select name="section_id" class="form-select form-select-sm" style="width:190px">
         <option value="0">All Sections</option>
         <?php foreach ($sections as $sectionOption): ?>
@@ -461,19 +212,19 @@ $genders  = ['Male','Female'];
     </table>
   </div>
   <div class="card-footer d-flex align-items-center justify-content-between">
-    <small class="text-muted">Page <?= $page ?> of <?= $totalPages ?> &mdash; <?= $totalRecords ?> records</small>
+    <small class="text-muted">Page <?= $studentPage ?> of <?= $totalPages ?> &mdash; <?= $totalRecords ?> records</small>
     <nav>
       <ul class="pagination pagination-sm mb-0">
-        <li class="page-item <?= $page<=1?'disabled':'' ?>">
-          <a class="page-link" href="?page=students&p=<?= $page-1 ?>&q=<?= urlencode($search) ?>"><i class="bi bi-chevron-left"></i></a>
+        <li class="page-item <?= $studentPage<=1?'disabled':'' ?>">
+          <a class="page-link" href="?page=students&p=<?= $studentPage-1 ?>&q=<?= urlencode($search) ?>"><i class="bi bi-chevron-left"></i></a>
         </li>
-        <?php for ($pg=max(1,$page-2); $pg<=min($totalPages,$page+2); $pg++): ?>
-          <li class="page-item <?= $pg==$page?'active':'' ?>">
+        <?php for ($pg=max(1,$studentPage-2); $pg<=min($totalPages,$studentPage+2); $pg++): ?>
+          <li class="page-item <?= $pg==$studentPage?'active':'' ?>">
             <a class="page-link" href="?page=students&p=<?= $pg ?>&q=<?= urlencode($search) ?>"><?= $pg ?></a>
           </li>
         <?php endfor; ?>
-        <li class="page-item <?= $page>=$totalPages?'disabled':'' ?>">
-          <a class="page-link" href="?page=students&p=<?= $page+1 ?>&q=<?= urlencode($search) ?>"><i class="bi bi-chevron-right"></i></a>
+        <li class="page-item <?= $studentPage>=$totalPages?'disabled':'' ?>">
+          <a class="page-link" href="?page=students&p=<?= $studentPage+1 ?>&q=<?= urlencode($search) ?>"><i class="bi bi-chevron-right"></i></a>
         </li>
       </ul>
     </nav>
@@ -499,28 +250,28 @@ $genders  = ['Male','Female'];
           <div class="col-md-3">
             <label class="form-label">Gender *</label>
             <select class="form-select" id="add_gender">
-              <option value="">Select…</option>
+              <option value="">Select...</option>
               <?php foreach ($genders as $g): ?><option><?= $g ?></option><?php endforeach; ?>
             </select>
           </div>
           <div class="col-md-3">
             <label class="form-label">Course *</label>
             <select class="form-select" id="add_course">
-              <option value="">Select…</option>
+              <option value="">Select...</option>
               <?php foreach ($courses as $c): ?><option value="<?= $c['course_id'] ?>"><?= htmlspecialchars($c['course_acronym']) ?></option><?php endforeach; ?>
             </select>
           </div>
           <div class="col-md-3">
             <label class="form-label">Section *</label>
             <select class="form-select" id="add_section">
-              <option value="">Select…</option>
+              <option value="">Select...</option>
               <?php foreach ($sections as $s): ?><option value="<?= $s['sectionID'] ?>"><?= htmlspecialchars($s['section']) ?></option><?php endforeach; ?>
             </select>
           </div>
           <div class="col-md-3">
             <label class="form-label">Year Level *</label>
             <select class="form-select" id="add_year">
-              <option value="">Select…</option>
+              <option value="">Select...</option>
               <?php foreach ($years as $y): ?><option><?= $y ?></option><?php endforeach; ?>
             </select>
           </div>
@@ -647,84 +398,3 @@ $genders  = ['Male','Female'];
 </div>
 <?php endif; ?>
 
-<script>
-const canManageStudents = <?= can('edit_students') ? 'true' : 'false' ?>;
-function saveStudent() {
-  if (!canManageStudents) { showToast('You do not have permission to manage students.','danger'); return; }
-  const data = {
-    action:'add',
-    student_no: document.getElementById('add_student_no').value.trim(),
-    lastname:  document.getElementById('add_lastname').value.trim(),
-    firstname: document.getElementById('add_firstname').value.trim(),
-    middlename:document.getElementById('add_middlename').value.trim(),
-    suffix:    document.getElementById('add_suffix').value.trim(),
-    gender:    document.getElementById('add_gender').value,
-    course_id: document.getElementById('add_course').value,
-    section_id:document.getElementById('add_section').value,
-    year_level: document.getElementById('add_year').value,
-  };
-  if (!data.lastname||!data.firstname||!data.gender||!data.course_id||!data.section_id||!data.year_level) {
-    showToast('Please fill in all required fields.','warning'); return;
-  }
-  fetch('', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body: new URLSearchParams(data)})
-  .then(r=>r.json()).then(res=>{
-    if(res.success){showToast(res.message);bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();setTimeout(()=>location.reload(),800);}
-    else showToast(res.message,'danger');
-  });
-}
-
-function openEdit(s) {
-  document.getElementById('edit_id').value=s.st_id;
-  document.getElementById('edit_student_no').value=s.student_no || '';
-  document.getElementById('edit_lastname').value=s.st_lastname;
-  document.getElementById('edit_firstname').value=s.st_name;
-  document.getElementById('edit_middlename').value=s.st_middlename;
-  document.getElementById('edit_suffix').value=s.st_suffix;
-  document.getElementById('edit_gender').value=s.st_gender;
-  // Course & section selects — match by text
-  [...document.getElementById('edit_course').options].forEach(o=>{if(o.text===s.course_acronym)o.selected=true;});
-  [...document.getElementById('edit_section').options].forEach(o=>{if(o.text===s.section)o.selected=true;});
-  document.getElementById('edit_year').value=s.yearlvl;
-  new bootstrap.Modal(document.getElementById('editModal')).show();
-}
-
-function updateStudent() {
-  if (!canManageStudents) { showToast('You do not have permission to manage students.','danger'); return; }
-  const data = {
-    action:'update',
-    st_id:     document.getElementById('edit_id').value,
-    student_no: document.getElementById('edit_student_no').value.trim(),
-    lastname:  document.getElementById('edit_lastname').value.trim(),
-    firstname: document.getElementById('edit_firstname').value.trim(),
-    middlename:document.getElementById('edit_middlename').value.trim(),
-    suffix:    document.getElementById('edit_suffix').value.trim(),
-    gender:    document.getElementById('edit_gender').value,
-    course_id: document.getElementById('edit_course').value,
-    section_id:document.getElementById('edit_section').value,
-    year_level: document.getElementById('edit_year').value,
-  };
-  fetch('', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body: new URLSearchParams(data)})
-  .then(r=>r.json()).then(res=>{
-    if(res.success){showToast(res.message);bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();setTimeout(()=>location.reload(),800);}
-    else showToast(res.message,'danger');
-  });
-}
-
-function deleteStudent(id, name) {
-  if (!canManageStudents) { showToast('You do not have permission to manage students.','danger'); return; }
-  if (!confirm(`Delete student "${name}"? This cannot be undone.`)) return;
-  fetch('',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body:new URLSearchParams({action:'delete',st_id:id})})
-  .then(r=>r.json()).then(res=>{
-    showToast(res.message, res.success?'success':'danger');
-    if(res.success) setTimeout(()=>location.reload(),800);
-  });
-}
-
-function printStudents() {
-  const q = '<?= urlencode($search) ?>';
-  window.open('print.php?type=students&q=' + q, '_blank');
-}
-</script>
