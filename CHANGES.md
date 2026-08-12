@@ -222,3 +222,69 @@ TALA Engine development should remain stable unless bug fixes or architectural i
 ### Release State
 
 The development branch now contains the RC3.5.22 work following the v1.0.3 stability release. See `docs/PROJECT_STATUS.md` for the consolidated current state.
+
+
+---
+
+## Administrative Refactor and Security/Stability Hardening — 2026-08-11
+
+### Presentation / Controller Separation
+
+- Extracted backend request handling from Academic Years into `includes/academic_years_controller.php`.
+- Extracted Score Settings processing into `includes/score_settings_controller.php`.
+- Extracted Student Import processing into `includes/import_students_controller.php`.
+- Extracted Database Backup processing into `includes/db_backup_controller.php`.
+- Extracted System Check processing into `includes/system_check_controller.php`.
+- Extracted Database Integrity processing into `includes/database_integrity_controller.php`.
+- Added dedicated `assets/js/academic_years.js` and `assets/js/score_settings.js` modules.
+- Removed duplicate page-level integrity JavaScript loading.
+
+### Security
+
+- Added POST and CSRF requirements to destructive backup delete/restore actions.
+- Added CSRF protection to backup creation and refactored administrative mutations.
+- Enforced module permissions at controller boundaries.
+- Added server-side input validation and safer error handling.
+- Protected SQL backup files from direct web access through `storage/backups/.htaccess`.
+- Removed the legacy synchronization debug action.
+- Removed exposed diagnostic `print_r()` output from application synchronization code.
+
+### Cleanup and QA
+
+- Removed stray `console.log()` debugging from `assets/js/teaching_loads.js`.
+- Removed literal newline artifacts from `pages/students.php`.
+- Repaired mojibake/corrupted text in `restore_backup.php`.
+- Revalidated 56 PHP files with zero syntax failures.
+- Revalidated 13 JavaScript files with zero syntax failures.
+- Application debug/artifact/mojibake scans report clean.
+- Verified protected pages redirect unauthenticated requests.
+- Verified direct SQL backup access returns HTTP 403.
+
+### Validation Boundary
+
+Static, syntax, security-boundary, and HTTP endpoint checks were executed against the development installation. Authenticated destructive database workflows were not executed against production data.
+
+## Analytics UI/KPI and Encoding Cleanup - 2026-08-12
+
+### Analytics redesign
+
+- Redesigned pages/analytics.php around an SIS-style analytical dashboard instead of a flat collection of statistic cards.
+- Added KPI-oriented executive metrics for Student Population, Section Coverage, Faculty Capacity, and Teaching Capacity.
+- Added focused analytical views for Overview, Attendance, Academics, and Students & Operations.
+- Kept visualization semantics intentional: line/trend for activity over time, donut for composition, bars for comparisons, and lists/tables for exact operational values.
+- Preserved the controller-backed architecture through includes/analytics_controller.php and frontend behavior through assets/js/analytics.js.
+
+### Encoding and visual artifact fix
+
+- Repaired UTF-8 mojibake in Analytics action links and labels, including corrupted arrow and middle-dot characters.
+- Verified the source uses genuine UTF-8 characters rather than mojibake sequences.
+- Re-scanned Analytics PHP, controller, JavaScript, and CSS for debug code, merge markers, literal newline artifacts, and corrupted text.
+
+### Verification
+
+- Analytics PHP and controller syntax: PASS.
+- Analytics JavaScript syntax: PASS.
+- Analytics artifact/debug scan: CLEAN.
+- Analytics mojibake scan: CLEAN.
+- KPI CSS marker: exactly one definition.
+- git diff --check for Analytics changes: CLEAN.

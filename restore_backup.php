@@ -5,13 +5,19 @@ require_once 'includes/db.php';
 
 require_permission('sync_settings');
 
-$file = basename($_GET['file'] ?? '');
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verify_csrf()) {
+    http_response_code(403);
+    exit('Invalid request.');
+}
+
+$file = basename($_POST['file'] ?? '');
 
 $backupFile =
     __DIR__ . '/storage/backups/' . $file;
 
-if (!is_file($backupFile)) {
-    die('Backup not found.');
+if ($file === '' || !is_file($backupFile)) {
+    http_response_code(404);
+    exit('Backup not found.');
 }
 
 echo '
@@ -54,7 +60,7 @@ flush();
 
 $pdo = getConnection();
 
-echo "<p class='text-center text-primary'>✓ Connected to database...</p>";
+echo "<p class='text-center text-primary'> Connected to database...</p>";
 flush();
 
 $backupDir =
@@ -119,7 +125,7 @@ foreach ($tables as $table) {
 		$sql
 	);
 	
-	echo "<p class='text-center text-success'>✓ Emergency backup created</p>";
+	echo "<p class='text-center text-success'> Emergency backup created</p>";
 	flush();
 
 	echo "<p class='text-center'>Reading backup file...</p>";
@@ -179,7 +185,7 @@ echo "
 
 <div class='alert alert-success mt-4'>
 
-<h4>✓ Database restored successfully</h4>
+<h4> Database restored successfully</h4>
 
 <p>
 The database has been restored from:

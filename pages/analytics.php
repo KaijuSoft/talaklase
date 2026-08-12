@@ -41,11 +41,22 @@ $courseMax = max(1, ...array_map(fn($r) => (int)$r['total'], $courseRows));
   </nav>
 
   <div class="analytics-tab-panel active" data-panel="overview">
-    <div class="analytics-kpis">
-      <?php foreach ([['Students',$totalStudents,'bi-people'],['Sections',$totalSections,'bi-diagram-3'],['Instructors',$totalInstructors,'bi-person-workspace'],['Teaching Loads',$totalLoads,'bi-journal-text']] as $c): ?>
-      <div class="analytics-kpi"><span class="analytics-kpi-icon"><i class="bi <?= $c[2] ?>"></i></span><span><strong><?= number_format((int)$c[1]) ?></strong><small><?= htmlspecialchars($c[0]) ?></small></span></div>
-      <?php endforeach; ?>
-    </div>
+    <section class="analytics-kpi-section" aria-label="Key performance indicators">
+      <div class="analytics-kpi-heading"><div><span>KPI dashboard</span><h2>Key performance indicators</h2></div><small>Current academic-year scope</small></div>
+      <div class="analytics-kpis">
+        <?php foreach ([
+          ["Student Population","Students",$totalStudents,"bi-people","Enrolled students in the current scope"],
+          ["Section Coverage","Sections",$totalSections,"bi-diagram-3","Active sections in the current scope"],
+          ["Faculty Capacity","Instructors",$totalInstructors,"bi-person-workspace","Instructors available in the current scope"],
+          ["Teaching Capacity","Teaching Loads",$totalLoads,"bi-journal-text","Assigned teaching loads in the current scope"]
+        ] as $kpi): ?>
+        <article class="analytics-kpi" data-kpi="<?= htmlspecialchars($kpi[0]) ?>">
+          <span class="analytics-kpi-icon"><i class="bi <?= $kpi[3] ?>"></i></span>
+          <div class="analytics-kpi-content"><span class="analytics-kpi-label"><?= htmlspecialchars($kpi[0]) ?></span><strong class="analytics-kpi-value"><?= number_format((int)$kpi[2]) ?></strong><small><?= htmlspecialchars($kpi[4]) ?></small></div>
+        </article>
+        <?php endforeach; ?>
+      </div>
+    </section>
 
     <div class="analytics-grid analytics-grid-hero">
       <article class="analytics-surface attendance-hero">

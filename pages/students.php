@@ -76,7 +76,8 @@ extract($studentPageData, EXTR_SKIP);
     </div>
   </div>
 
-<!-- Stats row -->`r`n<div class="col-6 col-md-3">
+<!-- Stats row -->
+<div class="col-6 col-md-3">
     <div class="stat-card">
       <div class="d-flex align-items-center gap-3">
         <div class="stat-icon bg-info-subtle text-info"><i class="bi bi-gender-male"></i></div>
@@ -356,6 +357,7 @@ extract($studentPageData, EXTR_SKIP);
                 method="post"
                 enctype="multipart/form-data"
                 action="pages/import_students.php">
+                <?= csrf_field() ?>
 
                 <div class="modal-header">
                     <h5 class="modal-title">

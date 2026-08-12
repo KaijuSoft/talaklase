@@ -555,3 +555,84 @@ Verification
 ```
 
 These RC3.5 extensions preserve the project's core separation-of-concerns and offline-first principles.
+
+
+---
+
+# Administrative Controller Architecture Extension — 2026-08-11
+
+The current administrative refactor formalizes the separation between presentation pages and request/business handling.
+
+## Refactored Flow
+
+```text
+Browser
+   ↓
+pages/*.php
+   ↓
+assets/js/*.js (where applicable)
+   ↓
+includes/*_controller.php
+   ↓
+Auth / Permission / CSRF validation
+   ↓
+Application logic
+   ↓
+Database
+```
+
+The presentation layer should render the interface and expose the required frontend hooks. Request handling, validation, authorization, database operations, and redirect behavior belong in controller files.
+
+## Current Controller Extractions
+
+- `academic_years_controller.php`
+- `score_settings_controller.php`
+- `import_students_controller.php`
+- `db_backup_controller.php`
+- `system_check_controller.php`
+- `database_integrity_controller.php`
+
+Dedicated frontend modules were also added for Academic Years and Score Settings.
+
+## Security Boundary
+
+Administrative controllers are responsible for enforcing permissions and CSRF validation rather than relying on the presentation page to provide security. Destructive operations must use POST requests.
+
+Backup SQL files are runtime artifacts and must not be directly downloadable through the normal web document tree. Apache access is denied through `storage/backups/.htaccess`.
+
+## Synchronization Safety
+
+The legacy `sync_api.php` debug action and exposed diagnostic output were removed during the hardening pass. Synchronization transport remains separate from the TALA Engine business layer.
+
+## Quality Gate
+
+The 2026-08-11 validation pass recorded zero PHP syntax failures across 56 files and zero JavaScript syntax failures across 13 files. Application debug, artifact, and mojibake scans were clean.
+
+This extension does not change the long-term enrollment-driven academic model or the TALA Engine separation rules.
+## Analytics Dashboard Architecture - 2026-08-12
+
+Analytics is a read-oriented SIS dashboard. It uses the same separation-of-concerns rule as the other refactored modules.
+
+```text
+Browser
+   |
+pages/analytics.php
+   |
+assets/js/analytics.js
+   |
+includes/analytics_controller.php
+   |
+Database
+```
+
+The executive summary uses four KPI groups: Student Population, Section Coverage, Faculty Capacity, and Teaching Capacity.
+
+Visualization guidance:
+
+- Trends use line visualizations.
+- Composition uses donut or pie visualizations.
+- Comparisons use bars.
+- Exact records use lists or tables.
+- Student attention uses compact drill-down lists.
+
+Analytics UI changes require visual inspection in addition to syntax and artifact scans. UTF-8 output is part of the presentation-quality gate because encoding defects can appear only after rendering.

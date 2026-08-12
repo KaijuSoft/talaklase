@@ -128,3 +128,38 @@ Recent work includes:
 - Improved administrative PRG workflows
 
 The repository's older RC1/RC2 documents remain useful as historical architecture and development references. Current implementation status should be taken from `docs/PROJECT_STATUS.md` and the latest changelog entries.
+
+
+## Recent Security and Stability Hardening
+
+The latest development pass completed a broad application cleanup and regression review.
+
+- Refactored administrative pages so presentation files are separated from backend controllers.
+- Added CSRF and permission enforcement to newly refactored administrative mutations.
+- Converted backup delete and restore actions to protected POST workflows.
+- Protected SQL backup files from direct Apache access with `storage/backups/.htaccess`.
+- Removed application debug output, debug actions, and stray browser console logging.
+- Removed literal newline artifacts and repaired corrupted text in the restore workflow.
+- Added safer server-side validation and generic error handling for administrative operations.
+- Revalidated all PHP and JavaScript syntax after the refactor.
+
+The current verified refactored modules are Academic Years, Score Settings, Student Import, Database Backup, System Check, and Database Integrity.
+
+See `TESTING.md`, `SECURITY.md`, and `docs/REGRESSION_MATRIX.md` for the validation and security details.
+
+## Analytics and KPI Dashboard
+
+The Analytics page uses a controller-backed SIS-style dashboard with KPI-oriented executive metrics and focused analytical views.
+
+Current KPI groups include:
+
+- Student Population
+- Section Coverage
+- Faculty Capacity
+- Teaching Capacity
+
+Analytics also provides attendance trends, attendance status distribution, student population comparisons, student-success attention flags, subject performance, and operational activity. Visualization types are chosen according to the data question rather than using charts indiscriminately.
+
+The Analytics UI is implemented in pages/analytics.php, backed by includes/analytics_controller.php, with frontend behavior in assets/js/analytics.js and styling in assets/css/talaklase-2.css.
+
+Analytics text must remain UTF-8 clean. Visible symbols such as arrows and middle dots must not be introduced through incorrectly encoded source text.

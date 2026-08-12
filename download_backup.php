@@ -8,8 +8,9 @@ $file = basename($_GET['file'] ?? '');
 
 $path = __DIR__ . '/storage/backups/' . $file;
 
-if (!is_file($path)) {
-    die('Backup not found.');
+if ($file === '' || !is_file($path)) {
+    http_response_code(404);
+    exit('Backup not found.');
 }
 
 header('Content-Type: application/octet-stream');

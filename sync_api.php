@@ -29,29 +29,13 @@ function getStudentCount(PDO $pdo): ?int {
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
-// ── Debug connection test ─────────────────────────────────────────────────────
-if ($action === 'debug') {
-    header('Content-Type: application/json');
-    $result = [];
-    try {
-        $c = getOnlineConn();
-        $c->query("SELECT 1");
-        $result['online'] = 'OK';
-    } catch (Exception $e) {
-        $result['online_error'] = $e->getMessage();
-    }
-    try {
-        $c = getLocalConn();
-        $c->query("SELECT 1");
-        $result['local'] = 'OK';
-    } catch (Exception $e) {
-        $result['local_error'] = $e->getMessage();
-    }
-    echo json_encode($result, JSON_PRETTY_PRINT);
-    exit;
+if (in_array($action, ['smart_merge','push_to_online','push_to_local'], true) && ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verify_csrf())) {
+    http_response_code(403);
+    exit('Invalid request.');
 }
 
-// ── Check connection status ───────────────────────────────────────────────────
+
+// Check connection status
 if ($action === 'check_status') {
     header('Content-Type: application/json');
     $status = ['online'=>false,'local'=>false,'online_time'=>null,'local_time'=>null];
@@ -77,7 +61,7 @@ if ($action === 'check_status') {
     exit;
 }
 
-// ── Check which DB is newer ───────────────────────────────────────────────────
+//  Check which DB is newer
 if ($action === 'check_newer') {
     header('Content-Type: application/json');
     try {
@@ -92,9 +76,9 @@ if ($action === 'check_newer') {
         if (abs($diff) <= $tolerance) {
             echo json_encode(['result'=>'in_sync',     'message'=>'Databases are already in sync. No sync needed.']);
         } elseif ($diff > 0) {
-            echo json_encode(['result'=>'local_newer', 'message'=>'Local is newer. Recommend: Push Local → Online.']);
+            echo json_encode(['result'=>'local_newer', 'message'=>'Local is newer. Recommend: Push Local  Online.']);
         } else {
-            echo json_encode(['result'=>'online_newer','message'=>'Online is newer. Recommend: Push Online → Local.']);
+            echo json_encode(['result'=>'online_newer','message'=>'Online is newer. Recommend: Push Online  Local.']);
         }
     } catch (Exception $e) {
         echo json_encode(['result'=>'error','message'=>'Error: '.$e->getMessage()]);
@@ -102,9 +86,9 @@ if ($action === 'check_newer') {
     exit;
 }
 
-// ─────────────────────────────────────────────────────────────
+//
 // TALA Engine v0.1 - Smart Merge (BETA)
-// ─────────────────────────────────────────────────────────────
+//
 
 if ($action === 'smart_merge') {
 
@@ -114,7 +98,7 @@ if ($action === 'smart_merge') {
 
     if (ob_get_level()) ob_end_clean();
 
-    function sendEvent($msg, $table='—', $current=0, $total=1, $type='progress') {
+    function sendEvent($msg, $table='', $current=0, $total=1, $type='progress') {
 
         echo "data: " . json_encode([
             'type'=>$type,
@@ -239,14 +223,14 @@ flush();
     exit;
 }
 
-// ── Sync (SSE streaming) ──────────────────────────────────────────────────────
+//  Sync (SSE streaming)
 if ($action === 'push_to_online' || $action === 'push_to_local') {
     header('Content-Type: text/event-stream');
     header('Cache-Control: no-cache');
     header('X-Accel-Buffering: no');
     if (ob_get_level()) ob_end_clean();
 
-    function sendEvent($msg, $table='—', $current=0, $total=1, $type='progress') {
+    function sendEvent($msg, $table='', $current=0, $total=1, $type='progress') {
         $data = json_encode(['type'=>$type,'message'=>$msg,'table'=>$table,'current'=>$current,'total'=>$total]);
         echo "data: $data\n\n";
         flush();
