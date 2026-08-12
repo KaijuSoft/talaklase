@@ -17,7 +17,7 @@ function createBackupSql(PDO $pdo): string {
         if(!$create || !isset($create['Create Table'])) throw new RuntimeException('Unable to read database schema.');
         $sql .= "\n\nDROP TABLE IF EXISTS `{$quotedTable}`;\n".$create['Create Table'].";\n\n";
         $rows=$pdo->query("SELECT * FROM `{$quotedTable}`")->fetchAll(PDO::FETCH_ASSOC);
-        foreach($rows as $row){$values=array_map(static fn($v)=>$v===null?'NULL':$pdo->quote($v),array_values($row));$sql.=sprintf("INSERT INTO `%s` VALUES (%s);\n",$quotedTable,implode(',',$values));}
+        foreach($rows as $row){$values=array_map(static fn($v)=>$v===null?'NULL':$pdo->quote((string)$v),array_values($row));$sql.=sprintf("INSERT INTO `%s` VALUES (%s);\n",$quotedTable,implode(',',$values));}
         $sql.="\n";
     }
     return $sql;
