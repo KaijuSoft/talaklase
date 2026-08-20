@@ -9,39 +9,30 @@ require_once __DIR__ . '/../includes/grades_controller.php';
       <button class="btn btn-sm btn-outline-secondary" onclick="printGrades()">
         <i class="bi bi-printer-fill me-1"></i> Print
       </button>
-      <?php if (can('manage_score_settings')): ?>
-      <a href="?page=score_settings" class="btn btn-sm btn-outline-secondary">
-        <i class="bi bi-gear-fill me-1"></i> Score Settings
-      </a>
-      <?php endif; ?>
     </div>
   </div>
   <div class="card-body">
 
-    <!-- Section & Subject selectors -->
+    <!-- Teaching assignment selector -->
     <div class="row g-3 mb-4">
-      <div class="col-md-5">
-        <label class="form-label">Section</label>
-        <select class="form-select" id="gr_section" onchange="onFilterChange()">
-          <option value="">Select Section…</option>
-          <?php foreach ($sections as $s): ?>
-            <option value="<?= $s['sectionID'] ?>"><?= htmlspecialchars($s['section']) ?> (<?= $s['course_acronym'] ?>)</option>
+      <div class="col-md-9">
+        <label class="form-label">Teaching Assignment</label>
+        <select class="form-select" id="gr_assignment" onchange="onFilterChange()">
+          <option value="">Select Teaching Assignment</option>
+          <?php foreach ($assignments as $a): ?>
+            <option value="<?= (int)$a['assignment_id'] ?>" data-section-id="<?= (int)$a['sectionID'] ?>" data-subject-id="<?= (int)$a['sub_id'] ?>">
+              <?= htmlspecialchars($a['section']) ?> &bull; <?= htmlspecialchars($a['sub_name']) ?> &bull; <?= htmlspecialchars($a['inst_name']) ?>
+            </option>
           <?php endforeach; ?>
         </select>
       </div>
-      <div class="col-md-5">
-        <label class="form-label">Subject</label>
-        <select class="form-select" id="gr_subject" onchange="onFilterChange()">
-          <option value="">Select Subject…</option>
-          <?php foreach ($subjects as $s): ?>
-            <option value="<?= $s['sub_id'] ?>"><?= htmlspecialchars($s['sub_name']) ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-      <div class="col-md-2 d-flex align-items-end">
+      <div class="col-md-3 d-flex align-items-end">
         <button class="btn btn-primary w-100" onclick="loadGrid()">
           <i class="bi bi-arrow-clockwise me-1"></i> Refresh
         </button>
+      </div>
+      <div class="col-12 pt-0">
+        <small class="text-muted">Maximum scores are saved independently for each teaching assignment, term, and component. Switch the term tab to configure a different set.</small>
       </div>
     </div>
 
@@ -64,11 +55,29 @@ require_once __DIR__ . '/../includes/grades_controller.php';
       </ul>
     </div>
 
+    <!-- Individual activity maximum scores -->
+    <?php if (can('manage_grades')): ?>
+    <div id="maxScorePanel" class="card border mb-3 d-none">
+      <div class="card-body py-3">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+          <div>
+            <h6 class="mb-0"><i class="bi bi-sliders me-2 text-primary"></i>Maximum Scores</h6>
+            <small class="text-muted">Set the maximum score for each individual activity.</small>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveMaxScores()">
+            <i class="bi bi-check2-circle me-1"></i>Save Max Scores
+          </button>
+        </div>
+        <div id="maxScoreFields" class="row g-2"></div>
+      </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Grid output -->
     <div id="gradeGrid">
       <div class="text-center text-muted py-5">
         <i class="bi bi-arrow-up-circle fs-1 d-block mb-2"></i>
-        Select a section and subject above to load grades.
+        Select a teaching assignment above to load grades.
       </div>
     </div>
 

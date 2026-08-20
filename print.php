@@ -326,15 +326,22 @@ elseif ($type === 'print_attendance') {
 
 // ── GRADES ────────────────────────────────────────────────────────────────────
 elseif ($type === 'grades') {
-    $sec  = (int)($_GET['sec']  ?? 0);
-    $sub  = (int)($_GET['sub']  ?? 0);
+    $assignmentId = (int)($_GET['assignment_id'] ?? 0);
     $term = $_GET['term'] ?? 'Prelim';
     $comp = $_GET['comp'] ?? 'Participation';
 
-    $secName = $pdo->prepare("SELECT section FROM section WHERE sectionID=?");
-    $secName->execute([$sec]); $secName = $secName->fetchColumn();
-    $subName = $pdo->prepare("SELECT sub_name FROM subject WHERE sub_id=?");
-    $subName->execute([$sub]); $subName = $subName->fetchColumn();
+    if ($assignmentId <= 0) { http_response_code(400); exit('Teaching assignment is required.'); }
+    $ast = $pdo->prepare("SELECT ta.assignment_id,ta.inst_id,ta.sectionID,ta.sub_id,se.section,su.sub_name
+                          FROM teaching_assignments ta
+                          INNER JOIN section se ON se.sectionID=ta.sectionID
+                          INNER JOIN subject su ON su.sub_id=ta.sub_id
+                          WHERE ta.assignment_id=? AND ta.is_active=1 AND ta.ay_id=? LIMIT 1");
+    $ast->execute([$assignmentId,current_ay_id($pdo)]); $assignment=$ast->fetch();
+    if (!$assignment) { http_response_code(404); exit('Teaching assignment not found.'); }
+    $user=current_user(); $role=$user['role']??''; $instId=(int)($user['inst_id']??0);
+    if (!in_array($role,['admin','instructor_admin'],true) && (int)$assignment['inst_id'] !== $instId) { http_response_code(403); exit('You are not authorized to print this teaching assignment.'); }
+    $sec=(int)$assignment['sectionID']; $sub=(int)$assignment['sub_id'];
+    $secName=$assignment['section']; $subName=$assignment['sub_name'];
 
     $isExam = $comp === 'Exam';
     $map = [
@@ -348,11 +355,11 @@ elseif ($type === 'grades') {
             CONCAT(s.st_lastname,', ',s.st_name,' ',s.st_middlename) AS FullName,
             s.st_gender, e.score
             FROM student s
-            INNER JOIN student_section ss ON ss.st_id=s.st_id
+            INNER JOIN student_assignments sa ON sa.st_id=s.st_id AND sa.assignment_id=:assignment
             LEFT JOIN class_record cr ON cr.st_id=s.st_id AND cr.sectionID=ss.sectionID AND cr.sub_id=:sub
             LEFT JOIN class_record_exam cre ON cre.rec_id=cr.rec_id AND cre.term=:term
             LEFT JOIN exam e ON e.exam_id=cre.exam_id
-            WHERE ss.sectionID=:sec ORDER BY s.st_gender DESC, s.st_lastname";
+            WHERE sa.assignment_id=:assignment ORDER BY s.st_gender DESC, s.st_lastname";
     } else {
         $m = $map[$comp];
         $colStr = implode(',', array_map(fn($c)=>"t.$c", $m['cols']));
@@ -360,22 +367,24 @@ elseif ($type === 'grades') {
             CONCAT(s.st_lastname,', ',s.st_name,' ',s.st_middlename) AS FullName,
             s.st_gender, $colStr
             FROM student s
-            INNER JOIN student_section ss ON ss.st_id=s.st_id
+            INNER JOIN student_assignments sa ON sa.st_id=s.st_id AND sa.assignment_id=:assignment
             LEFT JOIN class_record cr ON cr.st_id=s.st_id AND cr.sectionID=ss.sectionID AND cr.sub_id=:sub
             LEFT JOIN {$m['jt']} jt ON jt.rec_id=cr.rec_id AND jt.term=:term
             LEFT JOIN {$m['tbl']} t ON t.{$m['fk']}=jt.{$m['fk']}
-            WHERE ss.sectionID=:sec ORDER BY s.st_gender DESC, s.st_lastname";
+            WHERE sa.assignment_id=:assignment ORDER BY s.st_gender DESC, s.st_lastname";
     }
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([':sec'=>$sec,':sub'=>$sub,':term'=>$term]);
+    $stmt->execute([':assignment'=>$assignmentId,':sec'=>$sec,':sub'=>$sub,':term'=>$term]);
     $rows = $stmt->fetchAll();
 
-    if ($isExam) {
-        $ms = $pdo->prepare("SELECT score_max FROM exam_settings WHERE term=? LIMIT 1");
-        $ms->execute([$term]); $maxScores = [$ms->fetchColumn() ?: '—'];
+    $ms = $pdo->prepare("SELECT one_max,two_max,three_max,four_max,five_max FROM grade_max_scores WHERE assignment_id=? AND term=? AND component=? LIMIT 1");
+    $ms->execute([$assignmentId,$term,strtolower($comp)]); $savedMax=$ms->fetch(PDO::FETCH_NUM);
+    if ($savedMax) {
+        $maxScores=array_map('intval',$savedMax);
+    } elseif ($isExam) {
+        $ms=$pdo->prepare("SELECT score_max FROM exam_settings WHERE term=? LIMIT 1"); $ms->execute([$term]); $maxScores=[$ms->fetchColumn() ?: '?'];
     } else {
-        $ms = $pdo->prepare("SELECT one_max,two_max,three_max,four_max,five_max FROM score_settings WHERE term=? AND component=? LIMIT 1");
-        $ms->execute([$term, strtolower($comp)]); $maxScores = array_values($ms->fetch() ?: [0,0,0,0,0]);
+        $ms=$pdo->prepare("SELECT one_max,two_max,three_max,four_max,five_max FROM score_settings WHERE term=? AND component=? LIMIT 1"); $ms->execute([$term,strtolower($comp)]); $maxScores=array_values($ms->fetch() ?: [0,0,0,0,0]);
     }
 
     $termLabel = ['Prelim'=>'Prelim','Midterm'=>'Midterm','PreFinal'=>'Pre-Finals','Final'=>'Finals'];

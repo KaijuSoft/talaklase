@@ -2,6 +2,7 @@ let curTerm = 'Prelim';
 let curComp = 'Participation';
 let gradeRows = [];
 let cache = {};
+let maxScores = [];
 const canManageGrades = document.getElementById('gradePage')?.dataset.canManageGrades === '1';
 
 const termLabel = {Prelim:'Prelim',Midterm:'Midterm',PreFinal:'Pre-Finals',Final:'Finals'};
@@ -23,12 +24,7 @@ function setComp(el) {
   loadGrid();
 }
 
-function getSecSub() {
-  return {
-    sec: document.getElementById('gr_section').value,
-    sub: document.getElementById('gr_subject').value
-  };
-}
+function getAssignment() { return document.getElementById('gr_assignment')?.value || ''; }
 
 function onFilterChange() {
   cache = {};
@@ -36,26 +32,55 @@ function onFilterChange() {
 }
 
 function loadGrid() {
-  const {sec, sub} = getSecSub();
-  if (!sec || !sub) {
+  const assignment = getAssignment();
+  if (!assignment) {
     document.getElementById('gradeGrid').innerHTML =
-      '<div class="alert alert-warning mb-0">Please select both a section and a subject.</div>';
+      '<div class="alert alert-warning mb-0">Please select a teaching assignment.</div>';
     document.getElementById('saveBtnArea')?.classList.add('d-none');
+    document.getElementById('maxScorePanel')?.classList.add('d-none');
     return;
   }
-  if (curTerm === 'Summary') { loadSummary(); return; }
+  if (curTerm === 'Summary') {
+    document.getElementById('maxScorePanel')?.classList.add('d-none');
+    loadSummary();
+    return;
+  }
 
-  const key = `${curTerm}_${curComp}`;
-  if (cache[key]) { renderGrid(cache[key]); return; }
+  const maxPromise = loadMaxScores();
+
+  const key = `${assignment}_${curTerm}_${curComp}`;
+  if (cache[key]) { Promise.resolve(maxPromise).then(() => renderGrid(cache[key])); return; }
 
   document.getElementById('gradeGrid').innerHTML =
     '<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Loading grades…</p></div>';
 
   fetch('', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body: new URLSearchParams({action:'load_component',section_id:sec,subject_id:sub,term:curTerm,component:curComp})})
-  .then(r=>r.json()).then(data => { cache[key]=data; renderGrid(data); });
+    body: new URLSearchParams({action:'load_component',assignment_id:assignment,term:curTerm,component:curComp})})
+  .then(r=>r.json()).then(data => { cache[key]=data; return Promise.resolve(maxPromise).then(() => renderGrid(data)); });
 }
 
+function loadMaxScores() {
+  const panel=document.getElementById('maxScorePanel'); const fields=document.getElementById('maxScoreFields');
+  if(!panel||!fields) return Promise.resolve(); const assignment=getAssignment();
+  if(!assignment||curTerm==='Summary'){panel.classList.add('d-none');return Promise.resolve();}
+  fetch('',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({action:'load_max_scores',assignment_id:assignment,term:curTerm,component:curComp})})
+  .then(r=>r.json()).then(res=>{if(!res.success){panel.classList.add('d-none');return;} maxScores=res.maxes.map(Number);
+    const labels=curComp==='Exam'?['Exam']:Array.from({length:5},(_,i)=>curComp+' '+(i+1));
+    fields.innerHTML=labels.map((label,i)=>'<div class="col-6 col-md-'+(curComp==='Exam'?'4':'2')+'"><label class="form-label small mb-1">'+label+' Max</label><input type="number" class="form-control form-control-sm max-score-input" data-index="'+i+'" min="0" max="10000" step="1" value="'+(maxScores[i]??100)+'"></div>').join('');
+    panel.classList.remove('d-none');
+    return maxScores;
+  }).catch(()=>{panel.classList.add('d-none'); return maxScores;});
+}
+
+function saveMaxScores(){
+  if(!canManageGrades){showToast('You do not have permission to change maximum scores.','danger');return;}
+  const assignment=getAssignment(); if(!assignment||curTerm==='Summary')return;
+  const values=[...document.querySelectorAll('.max-score-input')].map(input=>Number(input.value));
+  if(values.some(v=>!Number.isInteger(v)||v<0||v>10000)){showToast('Maximum scores must be whole numbers from 0 to 10000.','warning');return;}
+  fetch('',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({action:'save_max_scores',assignment_id:assignment,term:curTerm,component:curComp,maxes:JSON.stringify(values)})})
+  .then(r=>r.json()).then(res=>{showToast(res.message,res.success?'success':'danger');if(res.success){maxScores=res.maxes.map(Number);delete cache[`${assignment}_${curTerm}_${curComp}`];renderGrid(gradeRows);}})
+  .catch(()=>showToast('Failed to save maximum scores.','danger'));
+}
 function renderGrid(data) {
   gradeRows = data;
   const isExam = curComp === 'Exam';
@@ -88,7 +113,10 @@ function renderGrid(data) {
   if (isExam) {
     html += `<th class="text-center" style="width:90px">Score</th>`;
   } else {
-    for (let i=1;i<=5;i++) html += `<th class="text-center" style="width:90px">${curComp} ${i}</th>`;
+    for (let i=1;i<=5;i++) {
+      const max=maxScores[i-1]??100;
+      html += '<th class="text-center" style="width:90px">'+curComp+' '+i+'<div class="small text-muted fw-normal">Max: '+max+'</div></th>';
+    }
   }
   html += '</tr></thead><tbody>';
 
@@ -100,12 +128,12 @@ function renderGrid(data) {
 
     if (isExam) {
       html += `<td><input type="number" class="form-control form-control-sm grade-input text-center"
-        id="score_${row.st_id}" value="${row.score??''}" min="0" step="0.01" placeholder="0" ${canManageGrades ? '' : 'readonly'}/></td>`;
+        id="score_${row.st_id}" value="${row.score??''}" min="0" max="${maxScores[0] ?? 100}" step="0.01" placeholder="0 / ${maxScores[0] ?? 100}" ${canManageGrades ? '' : 'readonly'}/></td>`;
     } else {
       const cols = colDefs[curComp];
       cols.forEach((col, j) => {
         html += `<td><input type="number" class="form-control form-control-sm grade-input text-center"
-          id="s${j+1}_${row.st_id}" value="${row[col]??''}" min="0" step="0.01" placeholder="0" ${canManageGrades ? '' : 'readonly'}/></td>`;
+          id="s${j+1}_${row.st_id}" value="${row[col]??''}" min="0" max="${maxScores[j] ?? 100}" step="0.01" placeholder="0 / ${maxScores[j] ?? 100}" ${canManageGrades ? '' : 'readonly'}/></td>`;
       });
     }
     html += '</tr>';
@@ -116,8 +144,8 @@ function renderGrid(data) {
 
 function saveGrades() {
   if (!canManageGrades) { showToast('You do not have permission to save grades.','danger'); return; }
-  const {sec, sub} = getSecSub();
-  if (!sec || !sub) { showToast('Select section and subject first.','warning'); return; }
+  const assignment = getAssignment();
+  if (!assignment) { showToast('Select a teaching assignment first.','warning'); return; }
   const lbl = `${curComp} grades for ${termLabel[curTerm]||curTerm}`;
   if (!confirm(`Save ${lbl}?`)) return;
 
@@ -135,10 +163,10 @@ function saveGrades() {
   });
 
   fetch('', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body: new URLSearchParams({action:'save_component',section_id:sec,subject_id:sub,term:curTerm,component:curComp,rows:JSON.stringify(rows)})})
+    body: new URLSearchParams({action:'save_component',assignment_id:assignment,term:curTerm,component:curComp,rows:JSON.stringify(rows)})})
   .then(r=>r.json()).then(res => {
     showToast(res.message, res.success?'success':'danger');
-    if (res.success) delete cache[`${curTerm}_${curComp}`];
+    if (res.success) delete cache[`${assignment}_${curTerm}_${curComp}`];
   });
 }
 
@@ -164,10 +192,10 @@ function summaryRemarks(avg) {
 }
 
 function loadSummary() {
-  const {sec,sub} = getSecSub();
-  if (!sec || !sub) {
+  const assignment = getAssignment();
+  if (!assignment) {
     document.getElementById('gradeGrid').innerHTML =
-      '<div class="alert alert-warning mb-0">Please select a section and subject.</div>';
+      '<div class="alert alert-warning mb-0">Please select a teaching assignment.</div>';
     return;
   }
 
@@ -179,8 +207,7 @@ function loadSummary() {
     headers:{'Content-Type':'application/x-www-form-urlencoded'},
     body:new URLSearchParams({
       action:'load_summary',
-      section_id:sec,
-      subject_id:sub,
+      assignment_id:assignment,
       term:term
     })
   }).then(r=>r.json());
@@ -279,9 +306,9 @@ function loadSummary() {
   });
 }
 function printGrades() {
-  const {sec, sub} = getSecSub();
-  if (!sec || !sub) { showToast('Select a section and subject first.','warning'); return; }
+  const assignment = getAssignment();
+  if (!assignment) { showToast('Select a teaching assignment first.','warning'); return; }
   if (curTerm === 'Summary') { showToast('Switch to a term tab to print grades.','warning'); return; }
-  const url = `print.php?type=grades&sec=${sec}&sub=${sub}&term=${curTerm}&comp=${curComp}`;
+  const url = `print.php?type=grades&assignment_id=${encodeURIComponent(assignment)}&term=${encodeURIComponent(curTerm)}&comp=${encodeURIComponent(curComp)}`;
   window.open(url, '_blank');
 }
