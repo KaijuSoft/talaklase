@@ -586,13 +586,12 @@ The presentation layer should render the interface and expose the required front
 ## Current Controller Extractions
 
 - `academic_years_controller.php`
-- `score_settings_controller.php`
 - `import_students_controller.php`
 - `db_backup_controller.php`
 - `system_check_controller.php`
 - `database_integrity_controller.php`
 
-Dedicated frontend modules were also added for Academic Years and Score Settings.
+Dedicated frontend modules were also added for Academic Years.
 
 ## Security Boundary
 

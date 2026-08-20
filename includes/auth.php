@@ -34,7 +34,6 @@ function page_permission(string $page): ?string {
         'grades' => 'view_grades',
 		'grades' => 'manage_grades',
 		'grades' => 'edit_grades',
-        'score_settings' => 'manage_score_settings',
         'courses' => 'manage_courses',
         'departments' => 'manage_departments',
         'instructors' => 'manage_instructors',
@@ -63,7 +62,6 @@ $PERMISSIONS = [
     'manage_sections',  'manage_subjects',
     'manage_instructors','manage_users',
     'sync_settings',    'print_reports',
-    'manage_score_settings', 
 	'manage_teaching_loads', 'manage_academic_years',
 	'manage_student_enrollment',
 	'manage_grades',
@@ -76,7 +74,6 @@ $PERMISSIONS = [
         'manage_departments','manage_courses',
         'manage_sections',  'manage_subjects',
         'sync_settings',    'print_reports',
-        'manage_score_settings',
 		'manage_grades',
     ],
    'instructor' => [

@@ -253,7 +253,6 @@ The current development tree includes a completed refactor of several administra
 ### Refactored Modules
 
 - Academic Years
-- Score Settings
 - Student Import
 - Database Backup
 - System Check

@@ -119,7 +119,6 @@ This matrix intentionally reports the documentation update itself as **not execu
 The following modules were included in the current regression pass:
 
 - Academic Years
-- Score Settings
 - Student Import
 - Database Backup
 - System Check

@@ -1,3 +1,10 @@
+## Score Settings UI Removal — 2026-08-20
+
+- Removed the user-facing Score Settings page and route.
+- Removed the Score Settings shortcut from the Grades interface.
+- Removed the manage_score_settings application permission.
+- Retained the score_settings database table as an internal grading dependency so existing Grades and Student Profile calculations continue to work.
+
 # TALA Engine Changelog
 
 ## RC1
