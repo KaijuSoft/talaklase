@@ -16,7 +16,7 @@ date_default_timezone_set('Asia/Manila');
 
 // Analytics is the authenticated landing page. Detailed student records remain a separate module.
 $page = $_GET['page'] ?? 'analytics';
-$allowed = ['analytics','students','student_profile','attendance_v2','view_attendance_v2','print_attendance_v2','grades','score_settings','courses','departments','instructors','instructor_accounts','sections','subjects','sync','db_backup','database_integrity','teaching_loads','academic_years','student_enrollment'];
+$allowed = ['analytics','students','student_profile','attendance_v2','view_attendance_v2','print_attendance_v2','grades','courses','departments','instructors','instructor_accounts','sections','subjects','sync','db_backup','database_integrity','teaching_loads','academic_years','student_enrollment'];
 if (!in_array($page, $allowed, true)) $page = 'analytics';
 
 $permission = page_permission($page);
@@ -77,7 +77,7 @@ include 'includes/update_banner.php';
 
 $titles = [
   'analytics'=>'Analytics','students'=>'Student Records','student_profile'=>'Student Profile','attendance_v2'=>'Attendance','view_attendance_v2'=>'View Attendance',
-  'print_attendance_v2'=>'Print Attendance','grades'=>'Grading Form','score_settings'=>'Score Settings',
+  'print_attendance_v2'=>'Print Attendance','grades'=>'Grading Form',
   'courses'=>'Courses','departments'=>'Departments','instructors'=>'Instructors','instructor_accounts'=>'User Accounts',
   'sections'=>'Sections','subjects'=>'Subjects','sync'=>'Smart Sync','db_backup'=>'Database Backup','teaching_loads'=>'Teaching Loads',
   'academic_years'=>'Academic Years','database_integrity'=>'Database Integrity','student_enrollment'=>'Enroll Student',
@@ -238,6 +238,8 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
 <script src="assets/js/app.js"></script>
+<?php if ($page === 'academic_years'): ?><script src="assets/js/academic_years.js?v=1"></script><?php endif; ?>
+<?php if ($page === 'database_integrity'): ?><script src="assets/js/database-integrity.js?v=1"></script><?php endif; ?>
 <?php if ($page === 'attendance_v2'): ?><script src="assets/js/attendance_v2.js?v=1"></script><?php endif; ?>
 <?php if ($page === 'grades'): ?><script src="assets/js/grades.js?v=1"></script><?php endif; ?>
 <?php if ($page === 'teaching_loads'): ?><script src="assets/js/teaching_loads.js?v=1"></script><?php endif; ?>

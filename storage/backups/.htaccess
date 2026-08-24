@@ -1,1 +1,3 @@
-Options -Indexes
+<FilesMatch "\.sql$">
+    Require all denied
+</FilesMatch>

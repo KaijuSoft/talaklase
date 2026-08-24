@@ -242,3 +242,77 @@ Destructive maintenance has not been executed against production data as part of
 - Integrity JavaScript now validates JSON responses and reports endpoint failures clearly.
 - User-account filter handling defaults safely to `all` when no filter is supplied.
 - Runtime `version.json` is aligned with the documented v1.0.3 release line.
+
+
+---
+
+## Administrative Security and Stability Pass — 2026-08-11
+
+The current development tree includes a completed refactor of several administrative modules into page/controller separation.
+
+### Refactored Modules
+
+- Academic Years
+- Student Import
+- Database Backup
+- System Check
+- Database Integrity
+
+### Security Improvements
+
+- Permission and CSRF enforcement at controller boundaries.
+- POST-only destructive backup deletion and restoration.
+- Protected SQL backup storage using Apache access controls.
+- Server-side validation and safer error handling for administrative workflows.
+- Removed synchronization debug action and exposed diagnostic output.
+
+### Cleanup
+
+- Removed browser console debugging from teaching loads.
+- Removed literal newline artifacts.
+- Repaired restore-page encoding corruption.
+- Removed duplicate Database Integrity script loading.
+
+### Validation Snapshot
+
+The development installation passed a broad static and HTTP review:
+
+- 56 PHP files syntax-checked with zero failures.
+- 13 JavaScript files syntax-checked with zero failures.
+- Debug scan clean.
+- Artifact scan clean.
+- Mojibake scan clean.
+- Protected-page unauthenticated access rejected/redirected.
+- Direct SQL backup access rejected with HTTP 403.
+
+Authenticated destructive workflows were intentionally not executed against production data.
+
+### Current Status
+
+The v1.0.3 development line remains active. This pass is a stability/security hardening milestone and does not represent a version bump by itself.
+---
+
+## Analytics Dashboard and KPI Work - 2026-08-12
+
+The Analytics experience has been redesigned as a college SIS-style dashboard.
+
+### Current Analytics UX
+
+- KPI-oriented executive summary metrics.
+- Student Population, Section Coverage, Faculty Capacity, and Teaching Capacity KPIs.
+- Focused analytical views for Overview, Attendance, Academics, and Students & Operations.
+- Attendance trend and status-distribution visualizations.
+- Student population and student-success attention views.
+- Subject performance and operational activity views.
+- Existing controller separation remains in place through includes/analytics_controller.php.
+
+### QA and Stability
+
+- Analytics PHP/controller syntax validation passed.
+- Analytics JavaScript syntax validation passed.
+- Debug and artifact scans passed.
+- UTF-8/mojibake cleanup completed after visual inspection identified corrupted action-link symbols.
+- KPI CSS duplication check passed.
+- Analytics git diff --check passed.
+
+This is a UI/UX and presentation-quality milestone; it does not represent a version bump by itself.

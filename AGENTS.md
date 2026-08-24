@@ -92,3 +92,15 @@ Before implementing new features:
 Do not ignore or disable failing tests.
 
 Treat every regression as a release blocker until resolved.
+
+## Administrative Refactor Rules
+
+Presentation pages must remain thin. Move request handling and database logic into `includes/*_controller.php` files.
+
+Mutating controller endpoints must enforce authentication, permission, method checks, CSRF validation, and server-side input validation as appropriate.
+
+Destructive actions must not be implemented as unauthenticated or GET-only operations.
+
+Before finishing a cleanup pass, scan application code for debug output, literal artifacts, and encoding corruption, then run syntax and HTTP boundary checks.
+
+Sensitive runtime artifacts such as SQL backups must not be directly exposed by the web server.

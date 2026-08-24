@@ -30,8 +30,6 @@ function loadSubjects(sectionID) {
     .then(r => r.json())
     .then(subjects => {
 
-        console.log('SUBJECTS', subjects);
-
         const select =
             document.getElementById('add_sub_id');
 

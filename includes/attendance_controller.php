@@ -394,7 +394,7 @@ if ($action === 'load_existing') {
         $pdo->beginTransaction();
 
         $upd = $pdo->prepare("
-    // Update attendance
+            UPDATE attendance
             SET status = ?,
                 time_in = ?,
                 time_override = ?,

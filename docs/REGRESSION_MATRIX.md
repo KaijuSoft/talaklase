@@ -94,3 +94,54 @@ This matrix intentionally reports the documentation update itself as **not execu
 | Integrity | Maintenance audit log | PASS - audit entry verified |
 | Integrity | AJAX JSON response handling | PASS - endpoint/browser validation |
 | Users | Account filter default | Code path reviewed; live browser warning verification pending |
+
+---
+
+## Administrative Refactor Regression Record — 2026-08-11
+
+| Area | Check | Result |
+|---|---|---|
+| PHP | Repository syntax pass | PASS — 56 files / 0 failures |
+| JavaScript | Repository syntax pass | PASS — 13 files / 0 failures |
+| Security | Unauthenticated protected pages | PASS — rejected/redirected |
+| Security | CSRF/permission controller review | PASS |
+| Security | Destructive backup methods | PASS — POST + CSRF |
+| Security | SQL backup direct access | PASS — HTTP 403 |
+| Cleanup | Debug output scan | PASS — clean |
+| Cleanup | Literal artifact scan | PASS — clean |
+| Cleanup | Mojibake scan | PASS — clean |
+| Architecture | Page/controller separation | PASS — target modules clean |
+| Frontend | New module assets | PASS — HTTP 200 |
+| Integrity | Duplicate script inclusion | PASS — removed |
+
+## Refactored Administrative Modules
+
+The following modules were included in the current regression pass:
+
+- Academic Years
+- Student Import
+- Database Backup
+- System Check
+- Database Integrity
+
+## Functional Boundary
+
+This record covers static, security-boundary, and HTTP endpoint validation. Authenticated destructive database operations were not executed against production data. Future release candidates must add authenticated Playwright/module coverage when safe credentials and test data are available.
+
+## Analytics Regression Record - 2026-08-12
+
+| Area | Check | Result |
+|---|---|---|
+| Analytics | PHP syntax | PASS |
+| Analytics | Controller syntax | PASS |
+| Analytics | JavaScript syntax | PASS |
+| Analytics | Debug-code scan | PASS - clean |
+| Analytics | Literal artifact scan | PASS - clean |
+| Analytics | Mojibake scan | PASS - clean after visual defect fix |
+| Analytics | KPI CSS duplication | PASS - one definition |
+| Analytics | Diff validation | PASS |
+| Analytics | Visual text inspection | PASS - corrupted arrows/middle dots corrected |
+
+### Analytics UI Scope
+
+The regression target includes KPI metrics, action links, attendance labels, student-risk labels, section comparison labels, academic labels, and operational labels. Visual inspection is required because source-level syntax checks cannot detect all encoding defects.

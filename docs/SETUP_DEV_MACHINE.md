@@ -544,3 +544,24 @@ Do not revert to legacy student_section logic.
 ---
 
 Happy Coding!
+
+
+# Current Development Validation Notes — 2026-08-11
+
+The repository has moved beyond the original RC2 setup assumptions. The current development line uses the RC3-era controller/API separation and includes administrative security hardening.
+
+After setting up a development machine, run the repository validation pass before beginning new work.
+
+Recommended minimum checks:
+
+```bash
+php -v
+node -v
+php -l index.php
+node --check assets/js/sync.js
+npx playwright test tests/00_smoke
+```
+
+For administrative changes also verify CSRF/permission boundaries and confirm that `storage/backups/*.sql` is not directly accessible through the web server.
+
+Do not execute destructive maintenance against production data during development validation.

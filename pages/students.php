@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/student_controller.php';
-$studentPageData = handleStudentPageRequest();
-extract($studentPageData, EXTR_SKIP);
+$pageData = handleStudentPageRequest();
+extract($pageData, EXTR_SKIP);
 ?>
 
 
@@ -76,7 +76,8 @@ extract($studentPageData, EXTR_SKIP);
     </div>
   </div>
 
-<!-- Stats row -->`r`n<div class="col-6 col-md-3">
+<!-- Stats row -->
+<div class="col-6 col-md-3">
     <div class="stat-card">
       <div class="d-flex align-items-center gap-3">
         <div class="stat-icon bg-info-subtle text-info"><i class="bi bi-gender-male"></i></div>
@@ -212,19 +213,19 @@ extract($studentPageData, EXTR_SKIP);
     </table>
   </div>
   <div class="card-footer d-flex align-items-center justify-content-between">
-    <small class="text-muted">Page <?= $studentPage ?> of <?= $totalPages ?> &mdash; <?= $totalRecords ?> records</small>
+    <small class="text-muted">Page <?= $page ?> of <?= $totalPages ?> &mdash; <?= $totalRecords ?> records</small>
     <nav>
       <ul class="pagination pagination-sm mb-0">
-        <li class="page-item <?= $studentPage<=1?'disabled':'' ?>">
-          <a class="page-link" href="?page=students&p=<?= $studentPage-1 ?>&q=<?= urlencode($search) ?>"><i class="bi bi-chevron-left"></i></a>
+        <li class="page-item <?= $page<=1?'disabled':'' ?>">
+          <a class="page-link" href="?page=students&p=<?= $page-1 ?>&q=<?= urlencode($search) ?>"><i class="bi bi-chevron-left"></i></a>
         </li>
-        <?php for ($pg=max(1,$studentPage-2); $pg<=min($totalPages,$studentPage+2); $pg++): ?>
-          <li class="page-item <?= $pg==$studentPage?'active':'' ?>">
+        <?php for ($pg=max(1,$page-2); $pg<=min($totalPages,$page+2); $pg++): ?>
+          <li class="page-item <?= $pg==$page?'active':'' ?>">
             <a class="page-link" href="?page=students&p=<?= $pg ?>&q=<?= urlencode($search) ?>"><?= $pg ?></a>
           </li>
         <?php endfor; ?>
-        <li class="page-item <?= $studentPage>=$totalPages?'disabled':'' ?>">
-          <a class="page-link" href="?page=students&p=<?= $studentPage+1 ?>&q=<?= urlencode($search) ?>"><i class="bi bi-chevron-right"></i></a>
+        <li class="page-item <?= $page>=$totalPages?'disabled':'' ?>">
+          <a class="page-link" href="?page=students&p=<?= $page+1 ?>&q=<?= urlencode($search) ?>"><i class="bi bi-chevron-right"></i></a>
         </li>
       </ul>
     </nav>
@@ -356,6 +357,7 @@ extract($studentPageData, EXTR_SKIP);
                 method="post"
                 enctype="multipart/form-data"
                 action="pages/import_students.php">
+                <?= csrf_field() ?>
 
                 <div class="modal-header">
                     <h5 class="modal-title">

@@ -3,16 +3,100 @@ require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_permission('view_grades');
 $pdo = getConnection();
+ensureGradeMaxScoresTable($pdo);
 
-// ─── AJAX HANDLERS ────────────────────────────────────────────────────────────
+function scoreSettingsTerm(string $term): string {
+    return $term === 'PreFinal' ? 'Prefinal' : $term;
+}
+
+function ensureGradeMaxScoresTable(PDO $pdo): void {
+    static $ready = false;
+    if ($ready) return;
+    $pdo->exec("CREATE TABLE IF NOT EXISTS grade_max_scores (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        assignment_id INT NOT NULL,
+        term VARCHAR(20) NOT NULL,
+        component VARCHAR(20) NOT NULL,
+        one_max INT NOT NULL DEFAULT 100,
+        two_max INT NOT NULL DEFAULT 100,
+        three_max INT NOT NULL DEFAULT 100,
+        four_max INT NOT NULL DEFAULT 100,
+        five_max INT NOT NULL DEFAULT 100,
+        UNIQUE KEY uq_grade_max_context (assignment_id, term, component),
+        KEY idx_grade_max_assignment (assignment_id, term, component)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $ready = true;
+}
+
+function resolveGradeAssignment(PDO $pdo, int $assignmentId): array {
+    if ($assignmentId <= 0) throw new InvalidArgumentException('Invalid teaching assignment.');
+    $sql = "SELECT ta.assignment_id,ta.inst_id,ta.sectionID,ta.sub_id,ta.ay_id,
+                   se.section, su.sub_name, i.inst_name
+            FROM teaching_assignments ta
+            INNER JOIN section se ON se.sectionID=ta.sectionID
+            INNER JOIN subject su ON su.sub_id=ta.sub_id
+            LEFT JOIN instructor i ON i.inst_id=ta.inst_id
+            WHERE ta.assignment_id=? AND ta.is_active=1 AND ta.ay_id=? LIMIT 1";
+    $st=$pdo->prepare($sql); $st->execute([$assignmentId,current_ay_id($pdo)]); $row=$st->fetch();
+    if (!$row) throw new RuntimeException('Teaching assignment not found or inactive.');
+    $user=current_user(); $role=$user['role']??''; $instId=(int)($user['inst_id']??0);
+    if (!in_array($role,['admin','instructor_admin'],true) && (int)$row['inst_id'] !== $instId) {
+        throw new RuntimeException('You are not authorized to access this teaching assignment.');
+    }
+    return $row;
+}
+
+function getMaxScores(PDO $pdo, string $comp, string $term, int $assignmentId = 0): array {
+    ensureGradeMaxScoresTable($pdo);
+    if ($assignmentId > 0) {
+        $st=$pdo->prepare("SELECT one_max,two_max,three_max,four_max,five_max FROM grade_max_scores WHERE assignment_id=? AND term=? AND component=? LIMIT 1");
+        $st->execute([$assignmentId,$term,strtolower($comp)]); $r=$st->fetch(PDO::FETCH_NUM);
+        if ($r) return $comp==='Exam' ? [(int)$r[0]] : array_map('intval',$r);
+    }
+    if ($comp==='Exam') {
+        $st=$pdo->prepare("SELECT score_max FROM exam_settings WHERE term=? LIMIT 1"); $st->execute([$term]); $r=$st->fetchColumn();
+        return [$r!==false?(int)$r:100];
+    }
+    $st=$pdo->prepare("SELECT one_max,two_max,three_max,four_max,five_max FROM score_settings WHERE term=? AND component=? LIMIT 1");
+    $st->execute([scoreSettingsTerm($term),strtolower($comp)]); $r=$st->fetch(PDO::FETCH_NUM);
+    return $r?array_map('intval',$r):[100,100,100,100,100];
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     $action = $_POST['action'] ?? '';
 
     // ── Load scores for a component/term ──────────────────────────────────────
+    // Load individual activity maximum scores
+    if ($action === 'load_max_scores') {
+        $assignmentId=(int)($_POST['assignment_id']??0); $term=$_POST['term']??''; $comp=$_POST['component']??'';
+        if(!in_array($comp,['Participation','Written','Performance','Exam'],true)){echo json_encode(['success'=>false,'message'=>'Invalid grading component.']);exit;}
+        try { resolveGradeAssignment($pdo,$assignmentId); echo json_encode(['success'=>true,'maxes'=>getMaxScores($pdo,$comp,$term,$assignmentId)]); }
+        catch(Throwable $e){echo json_encode(['success'=>false,'message'=>$e->getMessage()]);} exit;
+    }
+    if ($action === 'save_max_scores') {
+        require_permission('edit_grades');
+        $assignmentId=(int)($_POST['assignment_id']??0); $term=$_POST['term']??''; $comp=$_POST['component']??''; $maxes=json_decode($_POST['maxes']??'[]',true);
+        if(!in_array($comp,['Participation','Written','Performance','Exam'],true)){echo json_encode(['success'=>false,'message'=>'Invalid grading component.']);exit;}
+        try { resolveGradeAssignment($pdo,$assignmentId); } catch(Throwable $e){echo json_encode(['success'=>false,'message'=>$e->getMessage()]);exit;}
+        $expected=$comp==='Exam'?1:5;
+        if(!is_array($maxes)||count($maxes)!==$expected){echo json_encode(['success'=>false,'message'=>'Invalid maximum score values.']);exit;}
+        foreach($maxes as $i=>$value){if(!is_numeric($value)||(int)$value<0||(int)$value>10000){echo json_encode(['success'=>false,'message'=>'Maximum scores must be whole numbers from 0 to 10000.']);exit;} $maxes[$i]=(int)$value;}
+        try{
+            $pdo->beginTransaction(); ensureGradeMaxScoresTable($pdo); $component=strtolower($comp); $values=$comp==='Exam'?[$maxes[0],0,0,0,0]:$maxes;
+            $st=$pdo->prepare("SELECT id FROM grade_max_scores WHERE assignment_id=? AND term=? AND component=? LIMIT 1"); $st->execute([$assignmentId,$term,$component]); $id=$st->fetchColumn();
+            if($id)$pdo->prepare("UPDATE grade_max_scores SET one_max=?,two_max=?,three_max=?,four_max=?,five_max=? WHERE id=?")->execute([...$values,$id]);
+            else $pdo->prepare("INSERT INTO grade_max_scores (assignment_id,term,component,one_max,two_max,three_max,four_max,five_max) VALUES (?,?,?,?,?,?,?,?)")->execute([$assignmentId,$term,$component,...$values]);
+            $pdo->commit(); echo json_encode(['success'=>true,'message'=>"$comp maximum scores saved successfully.",'maxes'=>$maxes]);
+        }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();echo json_encode(['success'=>false,'message'=>'Unable to save maximum scores.']);}
+        exit;
+    }
+
     if ($action === 'load_component') {
-        $sec  = (int)$_POST['section_id'];
-        $sub  = (int)$_POST['subject_id'];
+        $assignmentId=(int)($_POST['assignment_id']??0);
+        $assignment=resolveGradeAssignment($pdo,$assignmentId);
+        $sec=(int)$assignment['sectionID'];
+        $sub=(int)$assignment['sub_id'];
         $term = $_POST['term'];
         $comp = $_POST['component'];
 
@@ -27,13 +111,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     LEFT JOIN class_record cr ON cr.st_id=s.st_id AND cr.sectionID=ta.sectionID AND cr.sub_id=:sub
                     LEFT JOIN class_record_exam cre ON cre.rec_id=cr.rec_id AND cre.term=:term
                     LEFT JOIN exam e ON e.exam_id=cre.exam_id
-                    WHERE ta.sectionID=:sec
+                    WHERE ta.assignment_id=:assignment
+                      AND ta.sectionID=:sec
                       AND ta.sub_id=:sub
                       AND ta.ay_id=:ay
                       AND sa.ay_id=:ay
                     ORDER BY s.st_gender DESC, s.st_lastname ASC";
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([':sec'=>$sec,':sub'=>$sub,':term'=>$term,':ay'=>current_ay_id($pdo)]);
+            $stmt->execute([':assignment'=>$assignmentId,':sec'=>$sec,':sub'=>$sub,':term'=>$term,':ay'=>current_ay_id($pdo)]);
         } else {
             $map = [
                 'Participation' => ['tbl'=>'participation','cols'=>['par_one','par_two','par_three','par_four','par_five'],'jt'=>'class_record_participation','fk'=>'par_id'],
@@ -52,13 +137,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     LEFT JOIN class_record cr ON cr.st_id=s.st_id AND cr.sectionID=ta.sectionID AND cr.sub_id=:sub
                     LEFT JOIN {$m['jt']} jt ON jt.rec_id=cr.rec_id AND jt.term=:term
                     LEFT JOIN {$m['tbl']} t ON t.{$m['fk']}=jt.{$m['fk']}
-                    WHERE ta.sectionID=:sec
+                    WHERE ta.assignment_id=:assignment`r`n                      AND ta.sectionID=:sec
                       AND ta.sub_id=:sub
                       AND ta.ay_id=:ay
                       AND sa.ay_id=:ay
                     ORDER BY s.st_gender DESC, s.st_lastname ASC";
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([':sec'=>$sec,':sub'=>$sub,':term'=>$term,':ay'=>current_ay_id($pdo)]);
+            $stmt->execute([':assignment'=>$assignmentId,':sec'=>$sec,':sub'=>$sub,':term'=>$term,':ay'=>current_ay_id($pdo)]);
         }
         echo json_encode($stmt->fetchAll());
         exit;
@@ -67,26 +152,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ── Save scores ───────────────────────────────────────────────────────────
     if ($action === 'save_component') {
         require_permission('edit_grades');
-        $sec  = (int)$_POST['section_id'];
-        $sub  = (int)$_POST['subject_id'];
+        $assignmentId=(int)($_POST['assignment_id']??0);
+        $assignment=resolveGradeAssignment($pdo,$assignmentId);
+        $sec=(int)$assignment['sectionID'];
+        $sub=(int)$assignment['sub_id'];
         $term = $_POST['term'];
         $comp = $_POST['component'];
         $rows = json_decode($_POST['rows'], true);
 
         // Get max scores for validation
-        function getMaxScores($pdo, $comp, $term) {
-            if ($comp === 'Exam') {
-                $s = $pdo->prepare("SELECT score_max FROM exam_settings WHERE term=? LIMIT 1");
-                $s->execute([$term]);
-                $r = $s->fetchColumn();
-                return $r !== false ? [(int)$r] : [100];
-            }
-            $s = $pdo->prepare("SELECT one_max,two_max,three_max,four_max,five_max FROM score_settings WHERE term=? AND component=? LIMIT 1");
-            $s->execute([$term, strtolower($comp)]);
-            $r = $s->fetch();
-            return $r ? array_values($r) : [100,100,100,100,100];
-        }
-        $maxes = getMaxScores($pdo, $comp, $term);
+        $maxes = getMaxScores($pdo, $comp, $term, $assignmentId);
 
         try {
             $pdo->beginTransaction();
@@ -173,8 +248,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // ── Summary (Excel-weighted) ─────────────────────────────────────────────
     if ($action === 'load_summary') {
-        $sec  = (int)$_POST['section_id'];
-        $sub  = (int)$_POST['subject_id'];
+        $assignmentId=(int)($_POST['assignment_id']??0);
+        $assignment=resolveGradeAssignment($pdo,$assignmentId);
+        $sec=(int)$assignment['sectionID'];
+        $sub=(int)$assignment['sub_id'];
         $term = $_POST['term'] ?? '';
 
         $sql = "SELECT
@@ -193,26 +270,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ROUND(
                 (
                     (IFNULL(p.par_one,0)+IFNULL(p.par_two,0)+IFNULL(p.par_three,0)+IFNULL(p.par_four,0)+IFNULL(p.par_five,0))
-                    / NULLIF((IFNULL(ss_p.one_max,0)+IFNULL(ss_p.two_max,0)+IFNULL(ss_p.three_max,0)+IFNULL(ss_p.four_max,0)+IFNULL(ss_p.five_max,0)), 0)
+                    / NULLIF((COALESCE(gms_p.one_max,ss_p.one_max,0)+COALESCE(gms_p.two_max,ss_p.two_max,0)+COALESCE(gms_p.three_max,ss_p.three_max,0)+COALESCE(gms_p.four_max,ss_p.four_max,0)+COALESCE(gms_p.five_max,ss_p.five_max,0)), 0)
                 ) * 100, 2
             ) AS Participation,
 
             ROUND(
                 (
                     (IFNULL(w.written_one,0)+IFNULL(w.written_two,0)+IFNULL(w.written_three,0)+IFNULL(w.written_four,0)+IFNULL(w.written_five,0))
-                    / NULLIF((IFNULL(ss_w.one_max,0)+IFNULL(ss_w.two_max,0)+IFNULL(ss_w.three_max,0)+IFNULL(ss_w.four_max,0)+IFNULL(ss_w.five_max,0)), 0)
+                    / NULLIF((COALESCE(gms_w.one_max,ss_w.one_max,0)+COALESCE(gms_w.two_max,ss_w.two_max,0)+COALESCE(gms_w.three_max,ss_w.three_max,0)+COALESCE(gms_w.four_max,ss_w.four_max,0)+COALESCE(gms_w.five_max,ss_w.five_max,0)), 0)
                 ) * 100, 2
             ) AS Written,
 
             ROUND(
                 (
                     (IFNULL(pf.perf_one,0)+IFNULL(pf.perf_two,0)+IFNULL(pf.perf_three,0)+IFNULL(pf.perf_four,0)+IFNULL(pf.perf_five,0))
-                    / NULLIF((IFNULL(ss_pf.one_max,0)+IFNULL(ss_pf.two_max,0)+IFNULL(ss_pf.three_max,0)+IFNULL(ss_pf.four_max,0)+IFNULL(ss_pf.five_max,0)), 0)
+                    / NULLIF((COALESCE(gms_pf.one_max,ss_pf.one_max,0)+COALESCE(gms_pf.two_max,ss_pf.two_max,0)+COALESCE(gms_pf.three_max,ss_pf.three_max,0)+COALESCE(gms_pf.four_max,ss_pf.four_max,0)+COALESCE(gms_pf.five_max,ss_pf.five_max,0)), 0)
                 ) * 100, 2
             ) AS Performance,
 
             ROUND(
-                (IFNULL(e.score,0) / NULLIF(IFNULL(es.score_max,0), 0)) * 100, 2
+                (IFNULL(e.score,0) / NULLIF(COALESCE(gms_e.one_max,es.score_max,0), 0)) * 100, 2
             ) AS Exam
 
         FROM teaching_assignments ta
@@ -236,8 +313,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
            AND crp.term = :term
         LEFT JOIN participation p
             ON p.par_id = crp.par_id
+        LEFT JOIN grade_max_scores gms_p
+            ON gms_p.assignment_id = ta.assignment_id
+           AND gms_p.term = crp.term
+           AND gms_p.component = 'participation'
         LEFT JOIN score_settings ss_p
-            ON ss_p.term = crp.term
+            ON ss_p.term = CASE WHEN crp.term = 'PreFinal' THEN 'Prefinal' ELSE crp.term END
            AND ss_p.component = 'participation'
 
         LEFT JOIN class_record_written crw
@@ -245,8 +326,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
            AND crw.term = :term
         LEFT JOIN written w
             ON w.written_id = crw.written_id
+        LEFT JOIN grade_max_scores gms_w
+            ON gms_w.assignment_id = ta.assignment_id
+           AND gms_w.term = crw.term
+           AND gms_w.component = 'written'
         LEFT JOIN score_settings ss_w
-            ON ss_w.term = crw.term
+            ON ss_w.term = CASE WHEN crw.term = 'PreFinal' THEN 'Prefinal' ELSE crw.term END
            AND ss_w.component = 'written'
 
         LEFT JOIN class_record_performance crpf
@@ -254,8 +339,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
            AND crpf.term = :term
         LEFT JOIN performance pf
             ON pf.perf_id = crpf.perf_id
+        LEFT JOIN grade_max_scores gms_pf
+            ON gms_pf.assignment_id = ta.assignment_id
+           AND gms_pf.term = crpf.term
+           AND gms_pf.component = 'performance'
         LEFT JOIN score_settings ss_pf
-            ON ss_pf.term = crpf.term
+            ON ss_pf.term = CASE WHEN crpf.term = 'PreFinal' THEN 'Prefinal' ELSE crpf.term END
            AND ss_pf.component = 'performance'
 
         LEFT JOIN class_record_exam cre
@@ -263,10 +352,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
            AND cre.term = :term
         LEFT JOIN exam e
             ON e.exam_id = cre.exam_id
+        LEFT JOIN grade_max_scores gms_e
+            ON gms_e.assignment_id = ta.assignment_id
+           AND gms_e.term = cre.term
+           AND gms_e.component = 'exam'
         LEFT JOIN exam_settings es
             ON es.term = cre.term
 
-        WHERE ta.sectionID = :sec
+        WHERE ta.assignment_id = :assignment
+          AND ta.sectionID = :sec
           AND ta.sub_id = :sub
           AND ta.ay_id = :ay
           AND sa.ay_id = :ay
@@ -275,6 +369,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
+            ':assignment' => $assignmentId,
             ':sec'  => $sec,
             ':sub'  => $sub,
             ':term' => $term,
@@ -305,6 +400,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$sections = $pdo->query("SELECT section.sectionID, section.section, course.course_acronym FROM section INNER JOIN course ON course.course_id=section.course_id ORDER BY section.section")->fetchAll();
-$subjects = $pdo->query("SELECT sub_id, sub_name FROM subject ORDER BY sub_name")->fetchAll();
+$user=current_user();
+$role=$user['role']??''; $instId=(int)($user['inst_id']??0);
+$assignmentSql="SELECT ta.assignment_id,ta.sectionID,ta.sub_id,ta.inst_id,se.section,su.sub_name,COALESCE(i.inst_name,'Unassigned') inst_name
+                FROM teaching_assignments ta
+                INNER JOIN section se ON se.sectionID=ta.sectionID
+                INNER JOIN subject su ON su.sub_id=ta.sub_id
+                LEFT JOIN instructor i ON i.inst_id=ta.inst_id
+                WHERE ta.is_active=1 AND ta.ay_id=?";
+$assignmentParams=[current_ay_id($pdo)];
+if(!in_array($role,['admin','instructor_admin'],true)){ $assignmentSql.=" AND ta.inst_id=?"; $assignmentParams[]=$instId; }
+$assignmentSql.=" ORDER BY se.section,su.sub_name,i.inst_name";
+$assignmentsStmt=$pdo->prepare($assignmentSql); $assignmentsStmt->execute($assignmentParams); $assignments=$assignmentsStmt->fetchAll();
 ?>

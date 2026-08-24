@@ -1,122 +1,7 @@
 <?php
-
-require_once __DIR__ . '/../includes/db.php';
-require_once __DIR__ . '/../includes/auth.php';
-require_once __DIR__ . '/../includes/academic_year.php';
-
-$pdo = getConnection();
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    header('Content-Type: application/json');
-
-    if (!verify_csrf()) {
-
-        echo json_encode([
-            'success' => false,
-            'message' => 'Invalid CSRF token.'
-        ]);
-
-        exit;
-    }
-
-    $action = $_POST['action'] ?? '';
-
-    try {
-
-        if ($action === 'add') {
-
-            $ayName = trim($_POST['ay_name'] ?? '');
-            $startDate = $_POST['start_date'] ?? null;
-            $endDate = $_POST['end_date'] ?? null;
-
-            if ($ayName === '') {
-
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Academic year is required.'
-                ]);
-
-                exit;
-            }
-
-            $stmt = $pdo->prepare("
-               INSERT INTO academic_year
-				(
-				ay_name,
-				start_date,
-				end_date,
-				is_active,
-				status
-				)
-				VALUES
-				(
-				?, ?, ?, 0, 'Closed'
-				)
-            ");
-
-            $stmt->execute([
-                $ayName,
-                $startDate,
-                $endDate
-            ]);
-
-            echo json_encode([
-                'success' => true,
-                'message' => 'Academic year added successfully.'
-            ]);
-
-            exit;
-        }
-
-        if ($action === 'activate') {
-
-            $ayId = (int)($_POST['ay_id'] ?? 0);
-
-            $pdo->exec("
-		UPDATE academic_year
-		SET
-			is_active = 0,
-			status = 'Closed'
-	");
-
-	$stmt = $pdo->prepare("
-		UPDATE academic_year
-		SET
-			is_active = 1,
-			status = 'Active'
-		WHERE ay_id = ?
-	");
-
-	$stmt->execute([$ayId]);
-
-            echo json_encode([
-                'success' => true,
-                'message' => 'Academic year activated.'
-            ]);
-
-            exit;
-        }
-
-    } catch (Throwable $e) {
-
-        echo json_encode([
-            'success' => false,
-            'message' => $e->getMessage()
-        ]);
-
-        exit;
-    }
-}
-
-$years = $pdo->query("
-    SELECT *
-    FROM academic_year
-    ORDER BY ay_id DESC
-")->fetchAll();
-
+require_once __DIR__ . '/../includes/academic_years_controller.php';
 ?>
-
+<div id="academicYearsPageConfig" data-csrf="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>"></div>
 <div class="card">
 
    <div class="card-header d-flex justify-content-between align-items-center">
@@ -134,7 +19,7 @@ $years = $pdo->query("
 
     </button>
 </div>
- 
+
     <div class="table-responsive">
 
         <table class="table table-hover mb-0">
@@ -172,7 +57,7 @@ $years = $pdo->query("
                    <td>
 						<?= htmlspecialchars($year['status']) ?>
 					</td>
-					
+
 					<td>
 
 			<?php if (!$year['is_active']): ?>
@@ -303,120 +188,3 @@ $years = $pdo->query("
     </div>
 
 </div>
-
-<script>
-const csrfToken =
-    <?= json_encode(csrf_token()) ?>;
-</script>
-
-<script>
-
-function saveAcademicYear() {
-
-    const params =
-        new URLSearchParams();
-
-    params.append(
-        'action',
-        'add'
-    );
-
-    params.append(
-        'ay_name',
-        document.getElementById(
-            'add_ay_name'
-        ).value.trim()
-    );
-
-    params.append(
-        'start_date',
-        document.getElementById(
-            'add_start_date'
-        ).value
-    );
-
-    params.append(
-        'end_date',
-        document.getElementById(
-            'add_end_date'
-        ).value
-    );
-
-    params.append(
-        'csrf_token',
-        csrfToken
-    );
-
-    fetch('', {
-        method: 'POST',
-        headers: {
-            'Content-Type':
-                'application/x-www-form-urlencoded'
-        },
-        body: params
-    })
-    .then(r => r.json())
-    .then(result => {
-
-        alert(result.message);
-
-        if (result.success) {
-
-            location.reload();
-
-        }
-
-    });
-
-}
-
-function activateYear(ayId) {
-
-    if (!confirm(
-        'Activate this academic year?'
-    )) {
-        return;
-    }
-
-    const params =
-        new URLSearchParams();
-
-    params.append(
-        'action',
-        'activate'
-    );
-
-    params.append(
-        'ay_id',
-        ayId
-    );
-
-    params.append(
-        'csrf_token',
-        csrfToken
-    );
-
-    fetch('', {
-        method: 'POST',
-        headers: {
-            'Content-Type':
-                'application/x-www-form-urlencoded'
-        },
-        body: params
-    })
-    .then(r => r.json())
-    .then(result => {
-
-        alert(result.message);
-
-        if (result.success) {
-
-            location.reload();
-
-        }
-
-    });
-
-}
-
-</script>

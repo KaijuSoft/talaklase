@@ -38,3 +38,12 @@ Ensure the web server user can read the application files and write to any runti
 Open the application in your browser and sign in with your administrator account.
 
 If the default administrator account is enabled in your environment, change its password immediately after first login.
+
+
+## Security Notes for Backup Storage
+
+If backup functionality is enabled, ensure `storage/backups` remains writable by the application but is not publicly readable.
+
+The current repository includes `storage/backups/.htaccess` to deny direct Apache access to SQL backup files. Equivalent access controls must be configured when deploying under a different web server.
+
+After deployment, verify that a backup filename cannot be fetched directly through the browser and that backup creation, download, restore, and deletion remain permission-protected.
