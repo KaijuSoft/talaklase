@@ -1,414 +1,61 @@
 <?php
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/db.php';
-
 $pdo = authBootstrap();
-
-// Already logged in → home
-if (!empty($_SESSION['user_id'])) {
-    header('Location: index.php');
-    exit;
-}
-
-// No-cache so browser-back after logout forces re-auth
+if (!empty($_SESSION['user_id'])) { header('Location: index.php'); exit; }
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Pragma: no-cache');
-
-$errors  = [];
+$errors = [];
 $prefill = '';
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!verify_csrf()) {
-        $errors[] = 'Invalid session. Please refresh and try again.';
-    } else {
-        $username = trim($_POST['username'] ?? '');
-        $password = $_POST['password'] ?? '';
-        $prefill  = htmlspecialchars($username, ENT_QUOTES, 'UTF-8');
-
-        if ($username === '') {
-            $errors[] = 'Username is required.';
-        }
-        if ($password === '') {
-            $errors[] = 'Password is required.';
-        }
-
+    if (!verify_csrf()) { $errors[] = 'Invalid session. Please refresh and try again.'; }
+    else {
+        $username = trim($_POST['username'] ?? ''); $password = $_POST['password'] ?? '';
+        $prefill = htmlspecialchars($username, ENT_QUOTES, 'UTF-8');
+        if ($username === '') $errors[] = 'Username is required.';
+        if ($password === '') $errors[] = 'Password is required.';
         if (empty($errors)) {
-            $stmt = $pdo->prepare(
-              'SELECT id, name, username, email, password_hash, role, inst_id, is_active
-               FROM users
-               WHERE username = ? OR email = ?
-               LIMIT 1'
-            );
-            $stmt->execute([$username, $username]);
-            $user = $stmt->fetch();
-
-            if (!$user) {
-                $errors[] = 'No account found with that username.';
-            } elseif (!(bool)$user['is_active']) {
-                $errors[] = auth_archived_message();
-            } elseif (!password_verify($password, $user['password_hash'])) {
-                $errors[] = 'Incorrect password. Please try again.';
-            } else {
-                session_regenerate_id(true);
-                $_SESSION['user_id']   = $user['id'];
-                $_SESSION['auth_user'] = [
-                    'id'       => $user['id'],
-                    'name'     => $user['name'],
-                  'email'    => $user['email'],
-                    'role'     => $user['role'],
-                    'inst_id'  => $user['inst_id'],
-                    'is_active'=> $user['is_active'],
-                ];
-                header('Location: index.php');
-                exit;
+            $stmt = $pdo->prepare('SELECT id, name, username, email, password_hash, role, inst_id, is_active FROM users WHERE username = ? OR email = ? LIMIT 1');
+            $stmt->execute([$username, $username]); $user = $stmt->fetch();
+            if (!$user) $errors[] = 'No account found with that username.';
+            elseif (!(bool)$user['is_active']) $errors[] = auth_archived_message();
+            elseif (!password_verify($password, $user['password_hash'])) $errors[] = 'Incorrect password. Please try again.';
+            else {
+                session_regenerate_id(true); $_SESSION['user_id'] = $user['id'];
+                $_SESSION['auth_user'] = ['id'=>$user['id'],'name'=>$user['name'],'email'=>$user['email'],'role'=>$user['role'],'inst_id'=>$user['inst_id'],'is_active'=>$user['is_active']];
+                header('Location: index.php'); exit;
             }
         }
     }
 }
 ?>
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TalaKlase - Sign in</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css"/>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --navy:        #0F1F3D;
-      --navy-mid:    #162B52;
-      --teal:        #1D9E75;
-      --teal-dark:   #157A5A;
-      --teal-pale:   rgba(29,158,117,0.12);
-      --off-white:   #F8F7F4;
-      --text-main:   #1A1A2E;
-      --text-muted:  #5C6070;
-      --border:      rgba(0,0,0,0.10);
-      --err-bg:      #FFF1F1;
-      --err-border:  #FECACA;
-      --err-text:    #991B1B;
-    }
-
-    html, body {
-      min-height: 100%;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      -webkit-font-smoothing: antialiased;
-      color: var(--text-main);
-    }
-
-    body {
-      background-color: var(--navy);
-      background-image: radial-gradient(rgba(255,255,255,0.045) 1px, transparent 1px);
-      background-size: 22px 22px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 2rem 1rem;
-    }
-
-    /* ── Card ─────────────────────────────────────────────── */
-    .card {
-      background: #ffffff;
-      border-radius: 16px;
-      width: 100%;
-      max-width: 420px;
-      padding: 0;
-      overflow: hidden;
-    }
-
-    /* Card top accent bar */
-    .card-accent {
-      height: 4px;
-      background: var(--teal);
-    }
-
-    .card-body {
-      padding: 2.25rem 2.5rem 2.5rem;
-    }
-
-    /* ── Brand ────────────────────────────────────────────── */
-    .brand {
-      text-align: center;
-      margin-bottom: 1.75rem;
-    }
-
-    .login-logo-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 52px; height: 52px;
-      background: linear-gradient(135deg, #0dc8a8, #3b82f6);
-      border-radius: 10px;
-      margin-bottom: 14px;
-      color: #fff;
-      font-size: 1.55rem;
-      box-shadow: 0 6px 18px rgba(13,200,168,0.25);
-    }
-
-    .wordmark {
-      font-size: 26px;
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      line-height: 1;
-      margin-bottom: 6px;
-    }
-    .wordmark .tala  { color: var(--teal); }
-    .wordmark .klase { color: var(--navy); }
-
-    .dept-label {
-      font-size: 12px;
-      color: var(--text-muted);
-      letter-spacing: 0.04em;
-    }
-
-    /* ── Section divider ──────────────────────────────────── */
-    .divider {
-      border: none;
-      border-top: 1px solid var(--border);
-      margin: 0 0 1.5rem;
-    }
-
-    .form-title {
-      font-size: 16px;
-      font-weight: 600;
-      margin-bottom: 0.25rem;
-    }
-    .form-sub {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-bottom: 1.5rem;
-    }
-
-    /* ── Error alert ──────────────────────────────────────── */
-    .alert {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      background: var(--err-bg);
-      border: 1px solid var(--err-border);
-      border-radius: 8px;
-      padding: 11px 13px;
-      margin-bottom: 1.25rem;
-      font-size: 13px;
-      color: var(--err-text);
-      line-height: 1.5;
-    }
-    .alert svg { flex-shrink: 0; margin-top: 1px; }
-
-    /* ── Fields ───────────────────────────────────────────── */
-    .field { margin-bottom: 1rem; }
-
-    label {
-      display: block;
-      font-size: 13px;
-      font-weight: 500;
-      margin-bottom: 5px;
-    }
-
-    .input-wrap {
-      position: relative;
-      display: flex;
-      align-items: center;
-    }
-
-    .input-icon {
-      position: absolute;
-      left: 11px;
-      color: var(--text-muted);
-      pointer-events: none;
-      line-height: 0;
-    }
-
-    input[type="text"],
-    input[type="password"] {
-      width: 100%;
-      height: 40px;
-      padding: 0 40px 0 36px;
-      border: 1px solid rgba(0,0,0,0.15);
-      border-radius: 8px;
-      font-size: 14px;
-      color: var(--text-main);
-      background: var(--off-white);
-      outline: none;
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    input:focus {
-      border-color: var(--teal);
-      box-shadow: 0 0 0 3px rgba(29,158,117,0.15);
-      background: #fff;
-    }
-    input.has-error {
-      border-color: #F87171;
-    }
-
-    .pw-toggle {
-      position: absolute;
-      right: 10px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--text-muted);
-      line-height: 0;
-      padding: 4px;
-    }
-    .pw-toggle:hover { color: var(--navy); }
-
-    /* ── Submit ───────────────────────────────────────────── */
-    .btn-primary {
-      width: 100%;
-      height: 42px;
-      background: var(--teal);
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      letter-spacing: 0.01em;
-      transition: background 0.15s, transform 0.1s;
-      margin-top: 0.25rem;
-    }
-    .btn-primary:hover  { background: var(--teal-dark); }
-    .btn-primary:active { transform: scale(0.98); }
-
-    /* ── Footer ───────────────────────────────────────────── */
-    .card-footer {
-      border-top: 1px solid var(--border);
-      padding: 1rem 2.5rem;
-      text-align: center;
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    /* ── Role chips ───────────────────────────────────────── */
-    .role-row {
-      display: flex;
-      gap: 6px;
-      justify-content: center;
-      margin-top: 0.85rem;
-    }
-    .role-chip {
-      font-size: 11px;
-      padding: 3px 10px;
-      border-radius: 100px;
-      border: 1px solid rgba(0,0,0,0.1);
-      color: var(--text-muted);
-    }
-
-    @media (max-width: 460px) {
-      .card-body { padding: 1.75rem 1.5rem 2rem; }
-      .card-footer { padding: 0.85rem 1.5rem; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      * { transition: none !important; }
-    }
-  </style>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TalaKlase — Sign in</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}body{min-height:100vh;background:#0b111b;color:#fff}.login-shell{min-height:100vh;display:grid;grid-template-columns:44% 56%}.login-panel{display:flex;align-items:center;justify-content:center;padding:48px 7%;background:linear-gradient(145deg,#0b111b,#101823)}.login-inner{width:100%;max-width:500px}.brand{text-align:center;margin-bottom:34px}.brand-mark{width:68px;height:68px;margin:0 auto 18px;border-radius:18px;background:linear-gradient(135deg,#1677ff,#0b4ecb);display:grid;place-items:center;box-shadow:0 14px 34px rgba(15,99,230,.3);font-size:32px}.wordmark{font-size:38px;font-weight:800;letter-spacing:-1.8px}.wordmark .tala{color:#fff}.wordmark .klase{color:#237cff}.brand-sub{margin-top:8px;color:#a7b1c2;letter-spacing:3px;text-transform:uppercase;font-size:11px;font-weight:600}.welcome{text-align:center;margin-bottom:28px}.welcome h1{margin:0 0 8px;font-size:25px}.welcome p{margin:0;color:#9da8b8;font-size:15px}.field{margin-bottom:17px}.field-wrap{position:relative}.field-wrap i{position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#929dad;font-size:20px}.field input{width:100%;height:58px;border:1px solid #354150;border-radius:10px;background:#111923;color:#fff;padding:0 58px 0 50px;font-size:15px;outline:none;transition:.18s}.field input::placeholder{color:#7e8998}.field input:focus{border-color:#247cff;box-shadow:0 0 0 3px rgba(36,124,255,.15)}.pw-toggle{position:absolute;right:8px;top:50%;width:42px;height:42px;margin:0;padding:0;transform:translateY(-50%);display:grid;place-items:center;border:0;border-radius:8px;background:transparent;color:#8995a6;cursor:pointer;font-size:20px;line-height:1;z-index:2}.pw-toggle:hover{color:#fff;background:rgba(255,255,255,.06)}.pw-toggle:focus-visible{outline:2px solid #247cff;outline-offset:1px}.login-row{display:flex;align-items:center;justify-content:flex-end;margin:4px 0 22px}.forgot{color:#2990ff;text-decoration:none;font-size:14px;font-weight:600}.forgot:hover{text-decoration:underline}.btn-login{width:100%;height:58px;border:0;border-radius:10px;background:linear-gradient(90deg,#1459d4,#247cff);color:#fff;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 12px 25px rgba(22,101,224,.22);transition:.18s}.btn-login:hover{filter:brightness(1.08);transform:translateY(-1px)}.btn-login:active{transform:translateY(0)}.alert{display:flex;gap:10px;background:#32191c;border:1px solid #633035;color:#ffb7bc;border-radius:10px;padding:12px 14px;margin-bottom:18px;font-size:13px;line-height:1.45}.login-footer{text-align:center;margin-top:38px;color:#778293;font-size:12px}.info-panel{position:relative;overflow:hidden;padding:8vh 9%;display:flex;align-items:center;background:linear-gradient(135deg,#1559c9 0%,#0c4ab7 55%,#0a3d99 100%)}.info-panel:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 85% 18%,rgba(255,255,255,.12),transparent 28%),linear-gradient(115deg,transparent 45%,rgba(255,255,255,.04) 45%,transparent 70%);opacity:.9}.info-content{position:relative;z-index:1;max-width:720px}.eyebrow{font-size:17px;color:#dbe8ff;margin-bottom:8px}.info-title{font-size:clamp(48px,5vw,76px);line-height:.98;letter-spacing:-3px;margin:0 0 14px;font-weight:800}.info-sub{font-size:25px;font-weight:650;margin:0 0 28px}.accent-line{width:52px;height:4px;background:#72b1ff;border-radius:4px;margin-bottom:26px}.info-copy{max-width:650px;font-size:17px;line-height:1.65;color:#e4efff;margin-bottom:42px}.features{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.feature{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.12);border-radius:15px;padding:22px 20px;backdrop-filter:blur(4px)}.feature i{font-size:27px;color:#fff}.feature h3{font-size:15px;margin:14px 0 7px}.feature p{margin:0;color:#d8e7ff;font-size:13px;line-height:1.5}.alert+form{margin-top:0}@media(max-width:900px){.login-shell{grid-template-columns:1fr}.info-panel{display:none}.login-panel{min-height:100vh;padding:35px 24px}.login-inner{max-width:500px}.brand{margin-bottom:28px}}@media(max-width:480px){.login-panel{padding:28px 18px}.wordmark{font-size:32px}.brand-mark{width:60px;height:60px}.field input,.btn-login{height:54px}.login-footer{margin-top:28px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important}}
+</style>
 </head>
 <body>
-
-<div class="card" role="main">
-  <div class="card-accent"></div>
-  <div class="card-body">
-
-    <!-- Brand -->
-    <div class="brand">
-      <div class="login-logo-icon" aria-hidden="true">
-        <i class="bi bi-mortarboard-fill"></i>
-      </div>
-      <div class="wordmark"><span class="tala">Tala</span><span class="klase">Klase</span></div>
-      <div class="dept-label">Your Records, Your Way</div>
-      
-    </div>
-
-    <hr class="divider">
-
-    <h1 class="form-title">Sign in to your account</h1>
-    <p class="form-sub">Enter your credentials to continue.</p>
-
-    <?php if (!empty($errors)): ?>
-      <div class="alert" role="alert">
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
-        </svg>
-        <div><?= implode('<br>', array_map(fn($e) => htmlspecialchars($e, ENT_QUOTES, 'UTF-8'), $errors)) ?></div>
-      </div>
-    <?php endif; ?>
-
-    <form method="POST" action="login.php" novalidate>
-      <?= csrf_field() ?>
-
-      <div class="field">
-        <label for="username">Username</label>
-        <div class="input-wrap">
-          <span class="input-icon">
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path d="M10 10a4 4 0 100-8 4 4 0 000 8zm-7 8a7 7 0 1114 0H3z"/>
-            </svg>
-          </span>
-          <input
-            type="text"
-            id="username"
-            name="username"
-            value="<?= $prefill ?>"
-            autocomplete="username"
-            autocapitalize="none"
-            spellcheck="false"
-            placeholder="your.username"
-            class="<?= !empty($errors) ? 'has-error' : '' ?>"
-            required
-            autofocus
-          >
-        </div>
-      </div>
-
-      <div class="field">
-        <label for="password">Password</label>
-        <div class="input-wrap">
-          <span class="input-icon">
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"/>
-            </svg>
-          </span>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            autocomplete="current-password"
-            placeholder="••••••••"
-            class="<?= !empty($errors) ? 'has-error' : '' ?>"
-            required
-          >
-          <button type="button" class="pw-toggle" aria-label="Show or hide password" onclick="togglePw(this)">
-            <svg id="eye-show" width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path d="M10 3C5 3 1.73 7.11 1.05 8.45a1 1 0 000 .9C1.73 10.89 5 15 10 15s8.27-4.11 8.95-5.45a1 1 0 000-.9C18.27 7.11 15 3 10 3zm0 10a4 4 0 110-8 4 4 0 010 8zm0-6a2 2 0 100 4 2 2 0 000-4z"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <button type="submit" class="btn-primary">Sign in</button>
-    </form>
-  </div>
-
-  <div class="card-footer">
-    Forgot your password? Contact your <strong>system admin</strong> to reset it.
-  </div>
-</div>
-
-<script>
-function togglePw(btn) {
-  var input = document.getElementById('password');
-  var isHidden = input.type === 'password';
-  input.type = isHidden ? 'text' : 'password';
-  btn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
-  btn.querySelector('svg').innerHTML = isHidden
-    ? '<path d="M2.22 2.22a.75.75 0 011.06 0l14.5 14.5a.75.75 0 01-1.06 1.06l-1.5-1.5A8.93 8.93 0 0110 17C5 17 1.73 12.89 1.05 11.55a1 1 0 010-.9 12.5 12.5 0 012.3-3.22L2.22 3.28a.75.75 0 010-1.06zM10 5a8.93 8.93 0 015.23 1.68l-1.5 1.5A6.46 6.46 0 0010 7c-2.76 0-5.16 1.57-6.95 3.55C3.63 11.27 4.7 12.6 6 13.5l-1.06 1.06A12.6 12.6 0 011.05 11.55a1 1 0 010-.9C1.73 9.11 5 5 10 5z"/>'
-    : '<path d="M10 3C5 3 1.73 7.11 1.05 8.45a1 1 0 000 .9C1.73 10.89 5 15 10 15s8.27-4.11 8.95-5.45a1 1 0 000-.9C18.27 7.11 15 3 10 3zm0 10a4 4 0 110-8 4 4 0 010 8zm0-6a2 2 0 100 4 2 2 0 000-4z"/>';
-}
-</script>
+<main class="login-shell">
+<section class="login-panel"><div class="login-inner">
+<div class="brand"><div class="brand-mark" aria-hidden="true"><i class="bi bi-mortarboard-fill"></i></div>
+<div class="welcome"><h1>Welcome back!</h1><p>Please sign in to continue to your account.</p></div>
+<?php if (!empty($errors)): ?><div class="alert" role="alert"><i class="bi bi-exclamation-circle-fill"></i><div><?= implode('<br>', array_map(fn($e) => htmlspecialchars($e, ENT_QUOTES, 'UTF-8'), $errors)) ?></div></div><?php endif; ?>
+<form method="POST" action="login.php" novalidate><?= csrf_field() ?>
+<div class="field"><div class="field-wrap"><i class="bi bi-person-fill"></i><input type="text" id="username" name="username" value="<?= $prefill ?>" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Username" required autofocus></div></div>
+<div class="field"><div class="field-wrap"><i class="bi bi-lock-fill"></i><input type="password" id="password" name="password" autocomplete="current-password" placeholder="Password" required><button type="button" class="pw-toggle" aria-label="Show password" onclick="togglePw(this)"><i class="bi bi-eye-fill"></i></button></div></div>
+<div class="login-row"><span class="forgot" title="Contact your system administrator to reset your password">Forgot password?</span></div>
+<button type="submit" class="btn-login">Log in <i class="bi bi-arrow-right"></i></button>
+</form>
+<div class="login-footer">TalaKlase School Information System</div>
+</div></section>
+<section class="info-panel"><div class="info-content"><div class="eyebrow">Welcome to</div><h2 class="info-title">TalaKlase</h2><p class="info-sub">School Information System</p><div class="accent-line"></div><p class="info-copy">Empowering educators, students, and administrators with a seamless and efficient platform for academic excellence.</p><div class="features"><article class="feature"><i class="bi bi-people-fill"></i><h3>For Educators</h3><p>Manage classes, grades, and attendance with ease.</p></article><article class="feature"><i class="bi bi-mortarboard-fill"></i><h3>For Students</h3><p>Access classes, grades, and important academic information.</p></article><article class="feature"><i class="bi bi-bar-chart-fill"></i><h3>For Administrators</h3><p>Oversee school operations and generate insightful reports.</p></article></div></div></section>
+</main>
+<script>function togglePw(btn){const input=document.getElementById('password');const icon=btn.querySelector('i');const show=input.type==='password';input.type=show?'text':'password';icon.className=show?'bi bi-eye-slash-fill':'bi bi-eye-fill';btn.setAttribute('aria-label',show?'Hide password':'Show password');}</script>
 </body>
 </html>

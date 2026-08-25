@@ -5,6 +5,7 @@
   const configElement = document.getElementById('studentPageConfig');
   const config = configElement ? JSON.parse(configElement.textContent || '{}') : {};
   const canManageStudents = config.canManageStudents === true;
+  const studentCache = window.TalaCache ? window.TalaCache.resource('students', { scope: config.cacheScope || 'default' }) : null;
 
   function openStudentModal(id) {
     const modal = document.getElementById(id);
@@ -31,6 +32,7 @@
     });
   }
 
+  function invalidateStudents() { if (studentCache) studentCache.clear(); }
   initStudentModals();
 
   window.saveStudent = function () {
@@ -52,7 +54,7 @@
     }
     fetch('', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:new URLSearchParams(data)})
       .then(r=>r.json()).then(res=>{
-        if(res.success){showToast(res.message);bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();setTimeout(()=>location.reload(),800);}
+        if(res.success){ invalidateStudents(); showToast(res.message);bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();setTimeout(()=>location.reload(),800);}
         else showToast(res.message,'danger');
       });
   };
@@ -88,7 +90,7 @@
     };
     fetch('', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:new URLSearchParams(data)})
       .then(r=>r.json()).then(res=>{
-        if(res.success){showToast(res.message);bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();setTimeout(()=>location.reload(),800);}
+        if(res.success){ invalidateStudents(); showToast(res.message);bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();setTimeout(()=>location.reload(),800);}
         else showToast(res.message,'danger');
       });
   };

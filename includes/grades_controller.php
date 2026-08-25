@@ -137,7 +137,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     LEFT JOIN class_record cr ON cr.st_id=s.st_id AND cr.sectionID=ta.sectionID AND cr.sub_id=:sub
                     LEFT JOIN {$m['jt']} jt ON jt.rec_id=cr.rec_id AND jt.term=:term
                     LEFT JOIN {$m['tbl']} t ON t.{$m['fk']}=jt.{$m['fk']}
-                    WHERE ta.assignment_id=:assignment`r`n                      AND ta.sectionID=:sec
+                    WHERE ta.assignment_id=:assignment
+                      AND ta.sectionID=:sec
                       AND ta.sub_id=:sub
                       AND ta.ay_id=:ay
                       AND sa.ay_id=:ay

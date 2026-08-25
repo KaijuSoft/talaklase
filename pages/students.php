@@ -116,7 +116,7 @@ extract($pageData, EXTR_SKIP);
 <div class="card">
   <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
     <form method="GET" class="d-flex gap-2 align-items-center">
-      <input type="hidden" name="page" value="students"/>
+      <input type="hidden" name="page" value="students"/>      <script type="application/json" id="studentPageConfig">{"canManageStudents":<?= can('edit_students') ? 'true' : 'false' ?>,"cacheScope":<?= json_encode((string)($currentUser['id'] ?? 'user')) ?>}</script>
       <input type="search" name="q" class="form-control form-control-sm" placeholder="Search students..." value="<?= htmlspecialchars($search) ?>" style="width:220px"/>
       <select name="section_id" class="form-select form-select-sm" style="width:190px">
         <option value="0">All Sections</option>
@@ -170,7 +170,7 @@ extract($pageData, EXTR_SKIP);
           <?php if (can('edit_students')): ?><th>Actions</th><?php endif; ?>
         </tr>
       </thead>
-      <tbody>
+      <tbody class="students-table-body">
         <?php if (empty($students)): ?>
           <tr><td colspan="<?= can('edit_students') ? 11 : 10 ?>" class="text-center text-muted py-4"><i class="bi bi-inbox me-2"></i>No students found.</td></tr>
         <?php else:

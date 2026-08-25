@@ -237,6 +237,9 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
   <div id="globalToast" class="toast align-items-center border-0" role="alert"><div class="d-flex"><div class="toast-body" id="toastMsg"></div><button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button></div></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/core/cache.js?v=1"></script>
+<script src="assets/js/core/skeletons.js?v=1"></script>
+<script src="assets/js/core/optimistic.js?v=1"></script>
 <script src="assets/js/app.js"></script>
 <?php if ($page === 'academic_years'): ?><script src="assets/js/academic_years.js?v=1"></script><?php endif; ?>
 <?php if ($page === 'database_integrity'): ?><script src="assets/js/database-integrity.js?v=1"></script><?php endif; ?>
