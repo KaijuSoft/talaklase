@@ -99,7 +99,7 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css"/>
   <link rel="stylesheet" href="assets/css/style.css"/>
   <link rel="stylesheet" href="assets/css/talaklase-2.css?v=1.0.3"/>
-  <?php if ($page === 'students'): ?><script defer src="/talaklase-dev/assets/js/students.js?v=5"></script><?php endif; ?>
+  <?php if ($page === 'students'): ?><script defer src="assets/js/students.js?v=8"></script><?php endif; ?>
 </head>
 <body>
 <div id="sidebar-overlay"></div>

@@ -213,19 +213,19 @@ extract($pageData, EXTR_SKIP);
     </table>
   </div>
   <div class="card-footer d-flex align-items-center justify-content-between">
-    <small class="text-muted">Page <?= $page ?> of <?= $totalPages ?> &mdash; <?= $totalRecords ?> records</small>
+    <small class="text-muted">Page <?= $currentPage ?> of <?= $totalPages ?> &mdash; <?= $totalRecords ?> records</small>
     <nav>
       <ul class="pagination pagination-sm mb-0">
-        <li class="page-item <?= $page<=1?'disabled':'' ?>">
-          <a class="page-link" href="?page=students&p=<?= $page-1 ?>&q=<?= urlencode($search) ?>"><i class="bi bi-chevron-left"></i></a>
+        <li class="page-item <?= $currentPage<=1?'disabled':'' ?>">
+          <a class="page-link" href="?page=students&p=<?= $currentPage-1 ?>&q=<?= urlencode($search) ?>"><i class="bi bi-chevron-left"></i></a>
         </li>
-        <?php for ($pg=max(1,$page-2); $pg<=min($totalPages,$page+2); $pg++): ?>
-          <li class="page-item <?= $pg==$page?'active':'' ?>">
+        <?php for ($pg=max(1,$currentPage-2); $pg<=min($totalPages,$currentPage+2); $pg++): ?>
+          <li class="page-item <?= $pg==$currentPage?'active':'' ?>">
             <a class="page-link" href="?page=students&p=<?= $pg ?>&q=<?= urlencode($search) ?>"><?= $pg ?></a>
           </li>
         <?php endfor; ?>
-        <li class="page-item <?= $page>=$totalPages?'disabled':'' ?>">
-          <a class="page-link" href="?page=students&p=<?= $page+1 ?>&q=<?= urlencode($search) ?>"><i class="bi bi-chevron-right"></i></a>
+        <li class="page-item <?= $currentPage>=$totalPages?'disabled':'' ?>">
+          <a class="page-link" href="?page=students&p=<?= $currentPage+1 ?>&q=<?= urlencode($search) ?>"><i class="bi bi-chevron-right"></i></a>
         </li>
       </ul>
     </nav>
@@ -285,6 +285,7 @@ extract($pageData, EXTR_SKIP);
     </div>
   </div>
 </div>
+<?php endif; ?>
 
 <!-- Edit Modal -->
 <div class="modal fade" id="editModal" tabindex="-1">
@@ -335,6 +336,7 @@ extract($pageData, EXTR_SKIP);
     </div>
   </div>
 </div>
+<?php if (can('edit_students')): ?>
 <div class="modal fade" id="importStudentsModal">
     <div class="modal-dialog">
         <div class="modal-content">

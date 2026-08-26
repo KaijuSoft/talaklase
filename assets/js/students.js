@@ -5,7 +5,8 @@
   const configElement = document.getElementById('studentPageConfig');
   const config = configElement ? JSON.parse(configElement.textContent || '{}') : {};
   const canManageStudents = config.canManageStudents === true;
-  const studentCache = window.TalaCache ? window.TalaCache.resource('students', { scope: config.cacheScope || 'default' }) : null;
+  const cacheScope = config.cacheScope || 'default';
+  const studentCache = window.TalaCache ? { clear: () => window.TalaCache.invalidate('students', cacheScope) } : null;
 
   function openStudentModal(id) {
     const modal = document.getElementById(id);
@@ -60,6 +61,8 @@
   };
 
   window.openEdit = function (s) {
+    const modal = document.getElementById('editModal');
+    if (!modal) { console.error('Edit modal is not present in the page.'); return; }
     document.getElementById('edit_id').value=s.st_id;
     document.getElementById('edit_student_no').value=s.student_no || '';
     document.getElementById('edit_lastname').value=s.st_lastname;
@@ -74,6 +77,8 @@
   };
 
   window.updateStudent = function () {
+    const editId = document.getElementById('edit_id');
+    if (!editId) { showToast('Edit form is unavailable. Please reload the page.', 'danger'); return; }
     if (!canManageStudents) { showToast('You do not have permission to manage students.','danger'); return; }
     const data = {
       action:'update',

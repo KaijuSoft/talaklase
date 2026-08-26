@@ -230,7 +230,7 @@ function loadStudentPageData(PDO $pdo, bool $isInstructorScoped, array $ownedSec
     $femaleStmt->execute();
 
     return [
-        'page' => $page,
+        'currentPage' => $page,
         'pageSize' => $pageSize,
         'search' => $search,
         'filterSection' => $filterSection,
