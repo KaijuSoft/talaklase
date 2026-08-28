@@ -21,19 +21,20 @@ function handleStudentAction(PDO $pdo, string $action, array $input, bool $isIns
         try {
             $pdo->beginTransaction();
             $studentNo = trim($input['student_no'] ?? '');
-            $chk = $pdo->prepare("SELECT COUNT(*) FROM student WHERE st_lastname=? AND st_name=? AND st_middlename=? AND st_suffix=? AND course_id=?");
-            $chk->execute([
-                ucwords(strtolower($input['lastname'] ?? '')),
-                ucwords(strtolower($input['firstname'] ?? '')),
-                ucwords(strtolower($input['middlename'] ?? '')),
-                ucwords(strtolower($input['suffix'] ?? '')),
-                $input['course_id'] ?? null,
-            ]);
-            if ($chk->fetchColumn() > 0) {
+            $lastName = ucwords(strtolower(trim($input['lastname'] ?? '')));
+            $firstName = ucwords(strtolower(trim($input['firstname'] ?? '')));
+            $middleName = ucwords(strtolower(trim($input['middlename'] ?? '')));
+            $suffix = ucwords(strtolower(trim($input['suffix'] ?? '')));
+            $courseId = $input['course_id'] ?? null;
+            $studentNo = trim($input['student_no'] ?? '');
+            $dup = $pdo->prepare("SELECT st_id, student_no FROM student WHERE st_lastname=? AND st_name=? AND course_id=?");
+            $dup->execute([$lastName, $firstName, $courseId]);
+            foreach ($dup->fetchAll(PDO::FETCH_ASSOC) as $existing) {
+                $existingNo = trim((string)($existing['student_no'] ?? ''));
+                if ($studentNo !== '' && $existingNo !== '' && $studentNo !== $existingNo) { continue; }
                 $pdo->rollBack();
-                return ['success' => false, 'message' => 'Duplicate student record found.'];
-            }
-            if ($studentNo !== '') {
+                return ['success' => false, 'message' => 'Possible duplicate student found. Please check the existing student record before adding another.'];
+            }            if ($studentNo !== '') {
                 $studentNoChk = $pdo->prepare("SELECT COUNT(*) FROM student WHERE student_no = ?");
                 $studentNoChk->execute([$studentNo]);
                 if ($studentNoChk->fetchColumn() > 0) {
