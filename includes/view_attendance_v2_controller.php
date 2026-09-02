@@ -93,7 +93,7 @@ $filter_assignment = $_GET['assignment_id'] ?? '';
 
 $page   = max(1, intval($_GET['p'] ?? 1));
 $limit  = 20;
-$offset = ($page - 1) * $limit;
+$offset = 0;
 
 $where  = ['1=1'];
 $params = [];
@@ -138,15 +138,17 @@ $whereStr = implode(' AND ', $where);
     INNER JOIN section ON section.sectionID=attendance.sectionID
     WHERE $whereStr");
 	$countStmt->execute($params);
-	$total      = $countStmt->fetchColumn();
-	$totalPages = max(1, ceil($total / $limit));
+	$total      = (int) $countStmt->fetchColumn();
+	$totalPages = max(1, (int) ceil($total / $limit));
 	$page       = min($page, $totalPages);
+	$offset     = ($page - 1) * $limit;
 	
 // Main query - grouped per student per section per term
 // Present count x 3 = total hours
 $stmt = $pdo->prepare("SELECT
     student.st_id,
     student.student_no,
+    student.st_gender,
     section.sectionID,
     CONCAT(student.st_lastname,', ',student.st_name,' ',student.st_middlename,' ',IF(student.st_suffix='','',student.st_suffix)) AS NAME,
     section.section AS Section,
@@ -185,7 +187,8 @@ INNER JOIN instructor i
     ON i.inst_id = ta.inst_id
 WHERE $whereStr
 GROUP BY student.st_id, section.sectionID, attendance.term
-ORDER BY student.st_lastname ASC, attendance.term ASC
+ORDER BY CASE WHEN LOWER(student.st_gender) = 'male' THEN 0 WHEN LOWER(student.st_gender) = 'female' THEN 1 ELSE 2 END,
+         student.st_lastname ASC, student.st_name ASC, student.st_middlename ASC, attendance.term ASC
 LIMIT :limit OFFSET :offset");
 
 	foreach ($params as $k => $v) $stmt->bindValue($k, $v);

@@ -179,7 +179,20 @@ require_once __DIR__ . '/../includes/view_attendance_v2_controller.php';
               
               </td>
             </tr>
-          <?php else: foreach ($records as $i => $r): ?>
+          <?php else:
+            $lastGender = null;
+            foreach ($records as $i => $r):
+              $gender = strtolower(trim((string)($r['st_gender'] ?? '')));
+              $genderLabel = $gender === 'male' ? 'Male Students' : ($gender === 'female' ? 'Female Students' : 'Other Students');
+              if ($gender !== $lastGender):
+                $lastGender = $gender;
+          ?>
+          <tr class="table-light">
+            <td colspan="12" class="fw-semibold text-primary">
+              <i class="bi bi-people-fill me-1"></i><?= htmlspecialchars($genderLabel) ?>
+            </td>
+          </tr>
+          <?php endif; ?>
           <tr>
               <td class="text-muted"><?= $offset + $i + 1 ?></td>
               <td><?= htmlspecialchars($r['NAME']) ?></td>
@@ -226,13 +239,26 @@ require_once __DIR__ . '/../includes/view_attendance_v2_controller.php';
       </small>
       <nav>
         <ul class="pagination pagination-sm mb-0">
-          <li class="page-item <?= $page<=1?'disabled':'' ?>">
-          <?= $filter_from ?: '...' ?> -> <?= $filter_to ?: '...' ?>
+          <?php $paginationQuery = [
+              'page' => 'view_attendance_v2',
+              'assignment_id' => $filter_assignment,
+              'term' => $filter_term,
+              'date_from' => $filter_from,
+              'date_to' => $filter_to,
+              'name' => $filter_name,
+          ]; ?>
+          <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+            <a class="page-link" href="?<?= http_build_query($paginationQuery + ['p' => $page - 1]) ?>" aria-label="Previous">
               <i class="bi bi-chevron-left"></i>
             </a>
           </li>
-          <li class="page-item <?= $page>=$totalPages?'disabled':'' ?>">
-          <?= $filter_from ?: '...' ?> -> <?= $filter_to ?: '...' ?>
+          <?php for ($pg = max(1, $page - 2); $pg <= min($totalPages, $page + 2); $pg++): ?>
+            <li class="page-item <?= $pg === $page ? 'active' : '' ?>">
+              <a class="page-link" href="?<?= http_build_query($paginationQuery + ['p' => $pg]) ?>"><?= $pg ?></a>
+            </li>
+          <?php endfor; ?>
+          <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>">
+            <a class="page-link" href="?<?= http_build_query($paginationQuery + ['p' => $page + 1]) ?>" aria-label="Next">
               <i class="bi bi-chevron-right"></i>
             </a>
           </li>
