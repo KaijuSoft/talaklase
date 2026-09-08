@@ -422,10 +422,8 @@ if ($action === 'load_existing') {
                 late_minutes = ?,
                 _date = ?,
                 term = ?
-            WHERE st_id = ?
+            WHERE Att_ID = ?
               AND assignment_id = ?
-              AND _date = ?
-              AND term = ?
         ");
 
         foreach ($records as $r) {
@@ -444,11 +442,13 @@ if ($action === 'load_existing') {
                 $attendanceTime['late_minutes'],
                 $date,
                 $term,
-                $r['st_id'],
-                $r['assignment_id'],
-                $oldDate,
-                $oldTerm
+                (int)($r['att_id'] ?? 0),
+                $r['assignment_id']
             ]);
+
+            if ($upd->rowCount() !== 1) {
+                throw new RuntimeException('Attendance record could not be updated. Please reload the attendance session and try again.');
+            }
         }
 
         $pdo->commit();

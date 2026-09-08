@@ -93,12 +93,14 @@ function loadStudentsByAssignment() {
                 const statusMap = {};
                 existing.forEach(e => {
                     statusMap[e.st_id] = {
+                        att_id: e.Att_ID,
                         status: e.status,
                         time_in: e.time_in
                     };
                 });
                 students.forEach(s => {
                     const saved = statusMap[s.ID];
+                    s.att_id = saved?.att_id || null;
                     s.status = saved?.status || 'Absent';
                     s.time_in = saved?.time_in || '';
                 });
@@ -266,6 +268,8 @@ function getRecords() {
       const timeInput = document.getElementById(`time_${s.ID}`);
 
       return ({
+      att_id:
+        s.att_id || null,
       st_id:
         s.ID,
       sectionID:

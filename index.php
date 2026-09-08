@@ -243,7 +243,7 @@ $hasManagementAccess = can_any(['manage_departments','manage_courses','manage_se
 <script src="assets/js/app.js"></script>
 <?php if ($page === 'academic_years'): ?><script src="assets/js/academic_years.js?v=1"></script><?php endif; ?>
 <?php if ($page === 'database_integrity'): ?><script src="assets/js/database-integrity.js?v=1"></script><?php endif; ?>
-<?php if ($page === 'attendance_v2'): ?><script src="assets/js/attendance_v2.js?v=1"></script><?php endif; ?>
+<?php if ($page === 'attendance_v2'): ?><script src="assets/js/attendance_v2.js?v=3"></script><?php endif; ?>
 <?php if ($page === 'grades'): ?><script src="assets/js/grades.js?v=1"></script><?php endif; ?>
 <?php if ($page === 'teaching_loads'): ?><script src="assets/js/teaching_loads.js?v=1"></script><?php endif; ?>
 <?php if ($page === 'student_enrollment'): ?><script src="assets/js/student_enrollment.js?v=1"></script><?php endif; ?>
