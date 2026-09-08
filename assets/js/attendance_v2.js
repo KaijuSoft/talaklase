@@ -1,5 +1,7 @@
 let attStudents = [];
 let isEditMode  = false;
+let editOriginalDate = '';
+let editOriginalTerm = '';
 
 // On page load - load teaching loads
 window.addEventListener(
@@ -101,6 +103,8 @@ function loadStudentsByAssignment() {
                     s.time_in = saved?.time_in || '';
                 });
 
+                editOriginalDate = date;
+                editOriginalTerm = term;
                 renderGrid(students, true);
                 showToast('Existing attendance found. Update mode enabled.', 'info');
 
@@ -318,6 +322,8 @@ function updateAttendance() {
       },
       body: new URLSearchParams({
           action:'update',
+          old_date: editOriginalDate || date,
+          old_term: editOriginalTerm || term,
           date,
           term,
           records:JSON.stringify(
@@ -357,6 +363,8 @@ function resetPage() {
   document.getElementById('bulkRow')
     ?.classList.add('d-none');
   isEditMode = false;
+  editOriginalDate = '';
+  editOriginalTerm = '';
   attStudents = [];
   renderGrid([], false);
 }

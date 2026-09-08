@@ -389,16 +389,39 @@ if ($action === 'load_existing') {
     $records = json_decode($_POST['records'], true);
     $date = $_POST['date'] ?? '';
     $term = $_POST['term'] ?? '';
+    $oldDate = $_POST['old_date'] ?? $date;
+    $oldTerm = $_POST['old_term'] ?? $term;
 
     try {
         $pdo->beginTransaction();
+
+        // Prevent moving an attendance session onto an existing load/date/term.
+        if ($oldDate !== $date || $oldTerm !== $term) {
+            $collision = $pdo->prepare("
+                SELECT COUNT(*)
+                FROM attendance
+                WHERE assignment_id = ?
+                  AND _date = ?
+                  AND term = ?
+            ");
+            $collision->execute([
+                $records[0]['assignment_id'] ?? 0,
+                $date,
+                $term
+            ]);
+            if ((int)$collision->fetchColumn() > 0) {
+                throw new RuntimeException('Attendance already exists for this teaching load, date, and term.');
+            }
+        }
 
         $upd = $pdo->prepare("
             UPDATE attendance
             SET status = ?,
                 time_in = ?,
                 time_override = ?,
-                late_minutes = ?
+                late_minutes = ?,
+                _date = ?,
+                term = ?
             WHERE st_id = ?
               AND assignment_id = ?
               AND _date = ?
@@ -419,10 +442,12 @@ if ($action === 'load_existing') {
                 $attendanceTime['time_in'],
                 $attendanceTime['time_override'],
                 $attendanceTime['late_minutes'],
+                $date,
+                $term,
                 $r['st_id'],
                 $r['assignment_id'],
-                $date,
-                $term
+                $oldDate,
+                $oldTerm
             ]);
         }
 
