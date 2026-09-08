@@ -2,6 +2,20 @@
 require_once __DIR__ . '/../includes/student_profile_controller.php';
 $profile = loadStudentProfilePage();
 
+if (!empty($profile['error_status'])) {
+    http_response_code((int) $profile['error_status']);
+    ?>
+    <div class="alert alert-danger">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>
+      <?= htmlspecialchars($profile['error_message'] ?? 'Unable to load student profile.') ?>
+    </div>
+    <a href="?page=students" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Back to Students
+    </a>
+    <?php
+    return;
+}
+
 extract($profile, EXTR_SKIP);
 ?>
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
@@ -16,7 +30,7 @@ extract($profile, EXTR_SKIP);
   </div>
   <form method="GET" class="d-flex gap-2">
     <input type="hidden" name="page" value="student_profile">
-    <input type="hidden" name="st_id" value="<?= $studentId ?>">
+    <input type="hidden" name="st_id" value="<?= (int) ($studentId ?? $student['st_id'] ?? 0) ?>">
     <select name="term" class="form-select form-select-sm" onchange="this.form.submit()">
       <option value="All">All Terms</option>
       <?php foreach ($terms as $term): ?>

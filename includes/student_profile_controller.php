@@ -98,7 +98,7 @@ function loadStudentProfileData(PDO $pdo, int $studentId, array $input = []): ar
         elseif ($record['status'] === 'Late') $totalHours += max(0, $duration - ((float) $record['late_minutes'] / 60));
     }
 
-    return compact('student', 'terms', 'termLabels', 'selectedTerm', 'ayId', 'gradeGroups', 'attByTerm', 'attTotals', 'totalHours');
+    return compact('student', 'studentId', 'terms', 'termLabels', 'selectedTerm', 'ayId', 'gradeGroups', 'attByTerm', 'attTotals', 'totalHours');
 }
 function loadStudentProfileScoreSettings(PDO $pdo, array $terms): array
 {
